@@ -1,0 +1,403 @@
+openapi: 3.0.3
+info:
+  title: UseZoracle Telegram Bot API
+  description: API for managing cryptocurrency accounts, checking balances, and performing transactions using the Coinbase CDP SDK
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://usezoracle-telegrambot.up.railway.app
+    description: Production server
+paths:
+  /health:
+    get:
+      summary: Check API health
+      description: Returns the status of the API server
+      tags:
+        - Health
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/health"
+      responses:
+        '200':
+          description: Health check successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-10-25T12:00:00Z"
+  /api/accounts:
+    get:
+      summary: List all accounts
+      description: Returns a list of all cryptocurrency accounts
+      tags:
+        - Accounts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/accounts"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/accounts')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a new account
+      description: Creates a new cryptocurrency account with the given name
+      tags:
+        - Accounts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/accounts" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"myWallet"}'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/accounts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: 'myWallet' })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Name for the new account
+                  minLength: 1
+                  maxLength: 50
+                  example: "myWallet"
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/accounts/{name}:
+    get:
+      summary: Get account details
+      description: Returns details of a specific account by name
+      tags:
+        - Accounts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/accounts/myWallet"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/accounts/myWallet')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Name of the account to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/balances/{accountName}:
+    get:
+      summary: Get account balances
+      description: Returns token balances for a specific account
+      tags:
+        - Balances
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/balances/myWallet"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/balances/myWallet')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      parameters:
+        - name: accountName
+          in: path
+          required: true
+          description: Name of the account to check balances for
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/transactions/transfer:
+    post:
+      summary: Transfer tokens
+      description: Transfer cryptocurrency from one account to another address
+      tags:
+        - Transactions
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/transactions/transfer" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "accountName": "myWallet",
+                "to": "0x1234567890123456789012345678901234567890",
+                "amount": "0.01",
+                "token": "eth",
+                "network": "base"
+              }'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/transactions/transfer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accountName: 'myWallet',
+                to: '0x1234567890123456789012345678901234567890',
+                amount: '0.01',
+                token: 'eth',
+                network: 'base'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - to
+                - amount
+                - token
+              properties:
+                accountName:
+                  type: string
+                  description: Name of the source account
+                  example: "myWallet"
+                to:
+                  type: string
+                  description: Destination Ethereum address
+                  pattern: "^0x[a-fA-F0-9]{40}$"
+                  example: "0x1234567890123456789012345678901234567890"
+                amount:
+                  type: string
+                  description: Amount to transfer
+                  example: "0.01"
+                token:
+                  type: string
+                  description: Token to transfer
+                  enum: ["eth", "usdc"]
+                  example: "eth"
+                network:
+                  type: string
+                  description: Blockchain network
+                  enum: ["base", "base-sepolia"]
+                  default: "base"
+                  example: "base"
+      responses:
+        '200':
+          description: Transfer completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the operation was successful
+        message:
+          type: string
+          description: Human-readable message about the operation
+        data:
+          type: object
+          description: Response data
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: string
+          description: Error message
+    AccountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Account myWallet retrieved successfully"
+        data:
+          type: object
+          properties:
+            address:
+              type: string
+              example: "0x1234567890123456789012345678901234567890"
+            name:
+              type: string
+              example: "myWallet"
+    BalanceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Balances retrieved successfully"
+        data:
+          type: object
+          properties:
+            account:
+              type: string
+              example: "myWallet"
+            network:
+              type: string
+              example: "base"
+            balances:
+              type: array
+              items:
+                type: object
+                properties:
+                  token:
+                    type: object
+                    properties:
+                      contractAddress:
+                        type: string
+                        example: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                      name:
+                        type: string
+                        example: "Ethereum"
+                      symbol:
+                        type: string
+                        example: "ETH"
+                      decimals:
+                        type: integer
+                        example: 18
+                  amount:
+                    type: object
+                    properties:
+                      raw:
+                        type: string
+                        example: "1000000000000000000"
+                      formatted:
+                        type: string
+                        example: "1.0"
+    TransferResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Transfer completed successfully"
+        data:
+          type: object
+          properties:
+            transactionHash:
+              type: string
+              example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+      description: Optional API key authentication (if implemented)

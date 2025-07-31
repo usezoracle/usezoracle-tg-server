@@ -5,6 +5,14 @@
 https://usezoracle-telegrambot-production.up.railway.app
 ```
 
+## API Documentation
+Interactive API documentation is available at:
+```
+/api-docs
+```
+
+Example: `https://usezoracle-telegrambot-production.up.railway.app/api-docs`
+
 ## Overview
 This API provides endpoints for managing Coinbase Developer Platform (CDP) accounts, transactions, and balances.
 
