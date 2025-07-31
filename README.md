@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-https://usezoracl-production.up.railway.app
+https://usezoracle-telegrambot-production.up.railway.app
 ```
 
 ## Overview
@@ -213,21 +213,21 @@ All endpoints return consistent error responses:
 
 ```bash
 # Health check
-curl https://usezoracl-production.up.railway.app/health
+curl https://usezoracle-telegrambot-production.up.railway.app/health
 
 # Create account
-curl -X POST https://usezoracl-production.up.railway.app/api/accounts \
+curl -X POST https://usezoracle-telegrambot-production.up.railway.app/api/accounts \
   -H "Content-Type: application/json" \
   -d '{"name": "my-new-account"}'
 
 # Get account
-curl https://usezoracl-production.up.railway.app/api/accounts/my-new-account
+curl https://usezoracle-telegrambot-production.up.railway.app/api/accounts/my-new-account
 
 # Get balances
-curl https://usezoracl-production.up.railway.app/api/balances/my-new-account
+curl https://usezoracle-telegrambot-production.up.railway.app/api/balances/my-new-account
 
 # Transfer tokens
-curl -X POST https://usezoracl-production.up.railway.app/api/transactions/transfer \
+curl -X POST https://usezoracle-telegrambot-production.up.railway.app/api/transactions/transfer \
   -H "Content-Type: application/json" \
   -d '{
     "accountName": "my-new-account",
@@ -241,11 +241,11 @@ curl -X POST https://usezoracl-production.up.railway.app/api/transactions/transf
 
 ```javascript
 // Health check
-const health = await fetch('https://usezoracl-production.up.railway.app/health');
+const health = await fetch('https://usezoracle-telegrambot-production.up.railway.app/health');
 const healthData = await health.json();
 
 // Create account
-const createAccount = await fetch('https://usezoracl-production.up.railway.app/api/accounts', {
+const createAccount = await fetch('https://usezoracle-telegrambot-production.up.railway.app/api/accounts', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ name: 'my-new-account' })
@@ -253,7 +253,7 @@ const createAccount = await fetch('https://usezoracl-production.up.railway.app/a
 const accountData = await createAccount.json();
 
 // Get balances
-const balances = await fetch('https://usezoracl-production.up.railway.app/api/balances/my-new-account');
+const balances = await fetch('https://usezoracle-telegrambot-production.up.railway.app/api/balances/my-new-account');
 const balanceData = await balances.json();
 ```
 
