@@ -5,6 +5,7 @@ import { accountRoutes } from "./routes/accountRoutes";
 import { transactionRoutes } from "./routes/transactionRoutes";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimiter } from "./middleware/rateLimiter";
+import { balanceRoutes } from "./routes/balanceRoutes";
 dotenv.config();
 
 const app = express();
@@ -23,6 +24,7 @@ app.get("/health", (req, res) => {
 // Routes
 app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/balances", balanceRoutes);
 
 // Error handling
 app.use(errorHandler);
