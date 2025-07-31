@@ -1,11 +1,11 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { accountRoutes } from "./routes/accountRoutes";
-import { transactionRoutes } from "./routes/transactionRoutes";
-import { errorHandler } from "./middleware/errorHandler";
-import { rateLimiter } from "./middleware/rateLimiter";
-import { balanceRoutes } from "./routes/balanceRoutes";
+import { accountRoutes } from "./routes/accountRoutes.js";
+import { transactionRoutes } from "./routes/transactionRoutes.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { rateLimiter } from "./middleware/rateLimiter.js";
+import { balanceRoutes } from "./routes/balanceRoutes.js";
 dotenv.config();
 
 const app = express();

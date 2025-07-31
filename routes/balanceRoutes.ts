@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { CdpService } from "../services/cdpService";
+import { CdpService } from "../services/cdpService.js";
 
 const router = Router();
 const cdpService = CdpService.getInstance();

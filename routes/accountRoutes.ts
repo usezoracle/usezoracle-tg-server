@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { CdpService } from "../services/cdpService";
-import { validateAccountName } from "../middleware/validation";
+import { CdpService } from "../services/cdpService.js";
+import { validateAccountName } from "../middleware/validation.js";
 
 const router = Router();
 const cdpService = CdpService.getInstance();
