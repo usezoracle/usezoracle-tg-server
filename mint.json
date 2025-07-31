@@ -1,0 +1,63 @@
+{
+  "name": "UseZoracle API",
+  "logo": {
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373",
+    "anchors": {
+      "from": "#0D9373",
+      "to": "#07C983"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "mailto:support@usezoracle.com"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Dashboard",
+    "url": "https://dashboard.usezoracle.com"
+  },
+  "anchors": [
+    {
+      "name": "API Reference",
+      "icon": "code",
+      "url": "api-reference"
+    },
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/yourusername/usezoracle-telegrambot"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "docs/introduction",
+        "docs/quickstart",
+        "docs/authentication",
+        "docs/setup-requirements"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "docs/api-reference/accounts",
+        "docs/api-reference/transactions",
+        "docs/api-reference/balances"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "twitter": "https://twitter.com/usezoracle",
+    "github": "https://github.com/yourusername/usezoracle-telegrambot"
+  },
+  "openapi": "openapi.yaml"
+}

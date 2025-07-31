@@ -1,0 +1,60 @@
+---
+title: 'Authentication'
+description: 'Learn how to authenticate with the UseZoracle API'
+---
+
+# Authentication
+
+The UseZoracle API uses CDP (Coinbase Developer Platform) credentials for authentication.
+
+## CDP Credentials
+
+To use the UseZoracle API, you need three key pieces of information:
+
+1. **CDP_API_KEY_ID**: Your API key identifier
+2. **CDP_API_KEY_SECRET**: Your API key secret
+3. **CDP_WALLET_SECRET**: Your wallet secret for signing transactions
+
+These credentials should be kept secure and never exposed in client-side code.
+
+## Server Configuration
+
+The UseZoracle API server needs these credentials to be configured as environment variables:
+
+```bash
+CDP_API_KEY_ID=your-api-key-id
+CDP_API_KEY_SECRET=your-api-key-secret
+CDP_WALLET_SECRET=your-wallet-secret
+```
+
+<Warning>
+Never include these credentials in client-side code or expose them in your frontend applications.
+</Warning>
+
+## Obtaining Credentials
+
+To obtain CDP credentials:
+
+1. Create an account on [Coinbase Developer Platform](https://www.coinbase.com/cloud)
+2. Navigate to the API Keys section
+3. Create a new API key with appropriate permissions
+4. Generate a wallet secret for transaction signing
+
+## Error Messages
+
+If you see the following error message, your CDP credentials are not properly configured:
+
+```
+Missing required CDP Secret API Key configuration parameters.
+```
+
+Make sure your environment variables are correctly set up before using the API.
+
+## Security Best Practices
+
+To keep your integration secure:
+
+- Store credentials in environment variables
+- Never commit credentials to version control
+- Implement proper key rotation policies
+- Use secure, encrypted connections for all API calls

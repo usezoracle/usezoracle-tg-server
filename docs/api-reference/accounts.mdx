@@ -1,0 +1,193 @@
+---
+title: 'Accounts API'
+description: 'API endpoints for managing cryptocurrency accounts'
+---
+
+# Accounts API
+
+The Accounts API allows you to create and manage cryptocurrency accounts.
+
+## Create Account
+
+Create a new cryptocurrency account with the given name.
+
+<CodeGroup>
+```bash Create Account
+curl -X POST "https://usezoracle-telegrambot-production.up.railway.app/api/accounts" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "myWallet"}'
+```
+
+```javascript JavaScript
+fetch('https://usezoracle-telegrambot-production.up.railway.app/api/accounts', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'myWallet' })
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField body="name" type="string" required>
+  Name for the new account (1-50 characters)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the operation was successful
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="Data object">
+    <ResponseField name="address" type="string">
+      The Ethereum address of the created account
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The name of the created account
+    </ResponseField>
+    <ResponseField name="network" type="string">
+      The blockchain network (e.g., "base")
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable message about the operation
+</ResponseField>
+
+<RequestExample>
+```json Example Request
+{
+  "name": "myWallet"
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": {
+    "address": "0x1234567890123456789012345678901234567890",
+    "name": "myWallet",
+    "network": "base"
+  },
+  "message": "Account myWallet created successfully"
+}
+```
+</ResponseExample>
+
+## Get Account
+
+Retrieve details of a specific account by name.
+
+<CodeGroup>
+```bash Get Account
+curl -X GET "https://usezoracle-telegrambot-production.up.railway.app/api/accounts/myWallet"
+```
+
+```javascript JavaScript
+fetch('https://usezoracle-telegrambot-production.up.railway.app/api/accounts/myWallet')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="name" type="string" required>
+  Name of the account to retrieve
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the operation was successful
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="Data object">
+    <ResponseField name="address" type="string">
+      The Ethereum address of the account
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The name of the account
+    </ResponseField>
+    <ResponseField name="network" type="string">
+      The blockchain network (e.g., "base")
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable message about the operation
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": {
+    "address": "0x1234567890123456789012345678901234567890",
+    "name": "myWallet",
+    "network": "base"
+  },
+  "message": "Account myWallet retrieved successfully"
+}
+```
+</ResponseExample>
+
+## List All Accounts
+
+Get all available accounts.
+
+<CodeGroup>
+```bash List Accounts
+curl -X GET "https://usezoracle-telegrambot-production.up.railway.app/api/accounts"
+```
+
+```javascript JavaScript
+fetch('https://usezoracle-telegrambot-production.up.railway.app/api/accounts')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+</CodeGroup>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the operation was successful
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of account objects, each with address, name, and network properties
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable message about the operation
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": [
+    {
+      "address": "0x1234567890123456789012345678901234567890",
+      "name": "account1",
+      "network": "base"
+    },
+    {
+      "address": "0x0987654321098765432109876543210987654321",
+      "name": "account2",
+      "network": "base"
+    }
+  ],
+  "message": "Accounts retrieved successfully"
+}
+```
+</ResponseExample>

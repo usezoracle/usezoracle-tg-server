@@ -1,0 +1,57 @@
+---
+title: 'Setup Requirements'
+description: 'What you need to provide to complete your documentation setup'
+---
+
+# Setup Requirements for Mintlify Documentation
+
+To complete your Mintlify documentation setup, you'll need to provide the following:
+
+## Required Assets
+
+1. **Logo Images**:
+   - Light mode logo: `/public/logo/light.png`
+   - Dark mode logo: `/public/logo/dark.png`
+   - Favicon: `/public/favicon.png`
+
+2. **Custom Styling** (in `mint.json`):
+   - Brand colors (primary, light, dark)
+   - Anchor colors
+
+3. **Contact Information**:
+   - Support email address
+   - Social media links
+   - GitHub repository URL
+
+4. **Project Information**:
+   - Dashboard URL (if applicable)
+
+## Required Environment Variables
+
+For your API to function properly, you need to set up:
+
+1. **CDP API Credentials**:
+   - `CDP_API_KEY_ID`
+   - `CDP_API_KEY_SECRET` 
+   - `CDP_WALLET_SECRET`
+
+You can set these as environment variables or provide them as parameters to the CdpClient constructor.
+
+## Deployment Steps
+
+To deploy your Mintlify documentation:
+
+1. Create a GitHub repository for your documentation
+2. Push your documentation files to the repository
+3. Connect your repository to Mintlify through [mintlify.com](https://mintlify.com)
+4. Configure your custom domain (optional)
+
+## Local Development
+
+To preview your documentation locally:
+
+```bash
+npm run docs:dev
+```
+
+Your documentation will be available at `http://localhost:3000`.

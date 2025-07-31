@@ -1,0 +1,127 @@
+---
+title: 'Transactions API'
+description: 'API endpoints for managing cryptocurrency transactions'
+---
+
+# Transactions API
+
+The Transactions API allows you to transfer cryptocurrency tokens between accounts.
+
+## Transfer Tokens
+
+Transfer cryptocurrency from one account to another address.
+
+<CodeGroup>
+```bash Transfer Tokens
+curl -X POST "https://usezoracle-telegrambot-production.up.railway.app/api/transactions/transfer" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountName": "myWallet",
+    "to": "0x1234567890123456789012345678901234567890",
+    "amount": "0.01",
+    "token": "eth",
+    "network": "base"
+  }'
+```
+
+```javascript JavaScript
+fetch('https://usezoracle-telegrambot-production.up.railway.app/api/transactions/transfer', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    accountName: 'myWallet',
+    to: '0x1234567890123456789012345678901234567890',
+    amount: '0.01',
+    token: 'eth',
+    network: 'base'
+  })
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField body="accountName" type="string" required>
+  Name of the source account
+</ParamField>
+
+<ParamField body="to" type="string" required>
+  Destination Ethereum address (0x format)
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  Amount to transfer (as a string to preserve precision)
+</ParamField>
+
+<ParamField body="token" type="string" required>
+  Token to transfer (e.g., "eth", "usdc")
+</ParamField>
+
+<ParamField body="network" type="string" default="base">
+  Blockchain network ("base" or "base-sepolia")
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the operation was successful
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="Data object">
+    <ResponseField name="transactionHash" type="string">
+      The hash of the completed transaction
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable message about the operation
+</ResponseField>
+
+<RequestExample>
+```json Example Request
+{
+  "accountName": "myWallet",
+  "to": "0x1234567890123456789012345678901234567890",
+  "amount": "0.01",
+  "token": "eth",
+  "network": "base"
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": {
+    "transactionHash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+  },
+  "message": "Transfer completed successfully"
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+When a transaction fails, the API returns a standard error response:
+
+<ResponseExample>
+```json Error Response
+{
+  "success": false,
+  "error": "Invalid recipient address format"
+}
+```
+</ResponseExample>
+
+### Common Error Messages
+
+- **Invalid recipient address format**: The `to` address is not in valid Ethereum format (0x followed by 40 hex characters)
+- **Amount must be a positive number**: The `amount` parameter must be a valid, positive number
+- **Account not found**: The specified account name does not exist
+- **Insufficient balance**: The account does not have enough tokens for the transfer
+- **Transaction failed**: The blockchain transaction failed (details in error message)

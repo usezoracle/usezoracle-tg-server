@@ -1,0 +1,83 @@
+---
+title: 'Quickstart Guide'
+description: 'Learn how to use the UseZoracle API in minutes'
+---
+
+# Quickstart Guide
+
+Get up and running with the UseZoracle API in just a few minutes.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- API credentials from Coinbase Developer Platform (CDP)
+- Basic understanding of HTTP requests
+- A tool to make API calls (like curl, Postman, or a programming language)
+
+## Step 1: Set Up Your Environment
+
+To use the UseZoracle API, you'll need to set up your CDP credentials:
+
+```bash
+# Required environment variables for the API
+CDP_API_KEY_ID=your-api-key-id
+CDP_API_KEY_SECRET=your-api-key-secret
+CDP_WALLET_SECRET=your-wallet-secret
+```
+
+## Step 2: Create an Account
+
+First, let's create a new cryptocurrency account:
+
+```bash
+curl -X POST "https://usezoracle-telegrambot-production.up.railway.app/api/accounts" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-first-account"}'
+```
+
+<ResponseExample>
+```json
+{
+  "success": true,
+  "data": {
+    "address": "0x...",
+    "name": "my-first-account",
+    "network": "base"
+  },
+  "message": "Account my-first-account created successfully"
+}
+```
+</ResponseExample>
+
+## Step 3: Check Your Balance
+
+Now, let's check the token balances for your new account:
+
+```bash
+curl "https://usezoracle-telegrambot-production.up.railway.app/api/balances/my-first-account"
+```
+
+## Step 4: Make a Transfer
+
+Finally, let's transfer some tokens:
+
+```bash
+curl -X POST "https://usezoracle-telegrambot-production.up.railway.app/api/transactions/transfer" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountName": "my-first-account",
+    "to": "0x1234567890123456789012345678901234567890",
+    "amount": "0.001",
+    "token": "eth",
+    "network": "base"
+  }'
+```
+
+## Next Steps
+
+Now that you've completed the basic operations with the UseZoracle API, you can:
+
+- Learn about [Authentication](/authentication)
+- Explore the full [API Reference](/api-reference/accounts)
+- Set up error handling for your integration

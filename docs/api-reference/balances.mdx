@@ -1,0 +1,143 @@
+---
+title: 'Balances API'
+description: 'API endpoints for checking cryptocurrency balances'
+---
+
+# Balances API
+
+The Balances API allows you to check token balances for cryptocurrency accounts.
+
+## Get Account Balances
+
+Returns token balances for a specific account.
+
+<CodeGroup>
+```bash Get Balances
+curl -X GET "https://usezoracle-telegrambot-production.up.railway.app/api/balances/myWallet"
+```
+
+```javascript JavaScript
+fetch('https://usezoracle-telegrambot-production.up.railway.app/api/balances/myWallet')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="accountName" type="string" required>
+  Name of the account to check balances for
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the operation was successful
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="Data object">
+    <ResponseField name="account" type="string">
+      The name of the account
+    </ResponseField>
+    <ResponseField name="network" type="string">
+      The blockchain network (e.g., "base")
+    </ResponseField>
+    <ResponseField name="balances" type="array">
+      Array of balance objects
+      <Expandable title="Balance object">
+        <ResponseField name="token" type="object">
+          <Expandable title="Token object">
+            <ResponseField name="contractAddress" type="string">
+              The token contract address
+            </ResponseField>
+            <ResponseField name="name" type="string">
+              The token name (e.g., "Ethereum")
+            </ResponseField>
+            <ResponseField name="symbol" type="string">
+              The token symbol (e.g., "ETH")
+            </ResponseField>
+            <ResponseField name="decimals" type="number">
+              The token decimal places
+            </ResponseField>
+          </Expandable>
+        </ResponseField>
+        <ResponseField name="amount" type="object">
+          <Expandable title="Amount object">
+            <ResponseField name="raw" type="string">
+              The raw token amount as a string
+            </ResponseField>
+            <ResponseField name="formatted" type="string">
+              The human-readable formatted amount
+            </ResponseField>
+          </Expandable>
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable message about the operation
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": {
+    "account": "myWallet",
+    "network": "base",
+    "balances": [
+      {
+        "token": {
+          "contractAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+          "name": "Ethereum",
+          "symbol": "ETH",
+          "decimals": 18
+        },
+        "amount": {
+          "raw": "1000000000000000000",
+          "formatted": "1.0"
+        }
+      },
+      {
+        "token": {
+          "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "name": "USD Coin",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "amount": {
+          "raw": "1000000",
+          "formatted": "1.0"
+        }
+      }
+    ]
+  },
+  "message": "Balances retrieved successfully"
+}
+```
+</ResponseExample>
+
+## Special Token Addresses
+
+The API uses standard token addresses for common cryptocurrencies:
+
+- **ETH**: `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`
+- **USDC on Base**: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+
+For other tokens, the API will return their respective contract addresses.
+
+## Error Handling
+
+If the account does not exist or there is an issue retrieving balances, the API returns an error response:
+
+<ResponseExample>
+```json Error Response
+{
+  "success": false,
+  "error": "Failed to get balances: Account not found"
+}
+```
+</ResponseExample>
