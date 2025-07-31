@@ -77,7 +77,7 @@ export class CdpService {
         message: `Account ${name} created successfully`,
       };
     } catch (error) {
-      throw new Error(`Failed to create account: ${error.message}`);
+      throw new Error(`Failed to create account: ${(error as Error).message}`);
     }
   }
 
@@ -91,7 +91,7 @@ export class CdpService {
         message: `Account ${name} retrieved successfully`,
       };
     } catch (error) {
-      throw new Error(`Failed to get account: ${error.message}`);
+      throw new Error(`Failed to get account: ${(error as Error).message}`);
     }
   }
 
@@ -105,7 +105,7 @@ export class CdpService {
         message: "Accounts retrieved successfully",
       };
     } catch (error) {
-      throw new Error(`Failed to list accounts: ${error.message}`);
+      throw new Error(`Failed to list accounts: ${(error as Error).message}`);
     }
   }
 
@@ -135,7 +135,7 @@ export class CdpService {
         message: "Transaction sent successfully",
       };
     } catch (error) {
-      throw new Error(`Failed to send transaction: ${error.message}`);
+      throw new Error(`Failed to send transaction: ${(error as Error).message}`);
     }
   }
 
@@ -163,7 +163,7 @@ export class CdpService {
         message: "Transfer completed successfully",
       };
     } catch (error) {
-      throw new Error(`Failed to transfer: ${error.message}`);
+      throw new Error(`Failed to transfer: ${(error as Error).message}`);
     }
   }
 
@@ -211,7 +211,7 @@ export class CdpService {
         message: "Balances retrieved successfully",
       };
     } catch (error) {
-      throw new Error("Failed to get balances: ", error.message);
+      throw new Error(`Failed to get balances: ${(error as Error).message}`);
     }
   }
 
@@ -261,7 +261,7 @@ export class CdpService {
     } catch (error) {
       console.warn(
         `Failed to fetch token metadata for ${contractAddress}:`,
-        error.message
+        (error as Error).message
       );
       const fallback = {
         name: "Unknown Token",
@@ -287,7 +287,7 @@ export class CdpService {
     } catch (error) {
       console.warn(
         `Failed to format amount ${amount} with ${decimals} decimals:`,
-        error
+        (error as Error).message
       );
       return "0.0";
     }

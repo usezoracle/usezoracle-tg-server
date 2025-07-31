@@ -2,11 +2,11 @@
     "compilerOptions": {
       "target": "ES2022",
       "lib": ["ES2022"],
-      "module": "commonjs",
+      "module": "ESNext",
       "moduleResolution": "node",
       "declaration": true,
       "outDir": "./dist",
-      "rootDir": "./src",
+      "rootDir": "./",
       "strict": true,
       "esModuleInterop": true,
       "skipLibCheck": true,
@@ -17,7 +17,11 @@
       "emitDecoratorMetadata": true
     },
     "include": [
-      "src/**/*"
+      "server.ts",
+      "routes/**/*",
+      "middleware/**/*",
+      "services/**/*",
+      "types/**/*"
     ],
     "exclude": [
       "node_modules",
