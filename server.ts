@@ -10,13 +10,18 @@ import { transactionRoutes } from "./routes/transactionRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { rateLimiter } from "./middleware/rateLimiter.js";
 import { balanceRoutes } from "./routes/balanceRoutes.js";
+import { swapRoutes } from "./routes/swapRoutes.js";
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow requests from any origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(rateLimiter);
 
@@ -42,6 +47,7 @@ app.get("/health", (req, res) => {
 app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/balances", balanceRoutes);
+app.use("/api/swaps", swapRoutes);
 
 // Error handling
 app.use(errorHandler);

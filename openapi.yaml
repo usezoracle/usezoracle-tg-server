@@ -9,6 +9,206 @@ servers:
   - url: https://usezoracle-telegrambot.up.railway.app
     description: Production server
 paths:
+  /api/swaps/tokens/{network}:
+    get:
+      summary: Get common token addresses for a network
+      description: Returns a list of common token addresses for the specified network
+      tags:
+        - Swaps
+      parameters:
+        - name: network
+          in: path
+          required: true
+          description: The network to get token addresses for
+          schema:
+            type: string
+            enum: [base, ethereum, base-sepolia]
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/swaps/tokens/base"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/swaps/tokens/base')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenListResponse'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/swaps/price:
+    get:
+      summary: Get swap price estimate with 5% fee
+      description: Returns price estimate for swapping tokens including 5% fee calculation
+      tags:
+        - Swaps
+      parameters:
+        - name: accountName
+          in: query
+          required: true
+          description: Name of the account to use for the swap
+          schema:
+            type: string
+        - name: fromToken
+          in: query
+          required: true
+          description: Token address to swap from (or ETH for native Ethereum)
+          schema:
+            type: string
+        - name: toToken
+          in: query
+          required: true
+          description: Token address to swap to (or ETH for native Ethereum)
+          schema:
+            type: string
+        - name: fromAmount
+          in: query
+          required: true
+          description: Amount to swap in base units (e.g. wei for ETH)
+          schema:
+            type: string
+        - name: network
+          in: query
+          required: true
+          description: Network to perform the swap on
+          schema:
+            type: string
+            enum: [base, ethereum, base-sepolia]
+            default: base
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/swaps/price?accountName=myAccount&fromToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE&toToken=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913&fromAmount=1000000000000000000&network=base"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/swaps/price?accountName=myAccount&fromToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE&toToken=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913&fromAmount=1000000000000000000&network=base')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwapPriceResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/swaps/execute:
+    post:
+      summary: Execute token swap with 5% fee
+      description: Executes a swap between tokens, applying a 5% fee that goes to a designated recipient
+      tags:
+        - Swaps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - fromToken
+                - toToken
+                - fromAmount
+                - network
+              properties:
+                accountName:
+                  type: string
+                  description: Name of the account to execute the swap from
+                  example: "myAccount"
+                fromToken:
+                  type: string
+                  description: Token address to swap from (or ETH for native Ethereum)
+                  example: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                toToken:
+                  type: string
+                  description: Token address to swap to (or ETH for native Ethereum)
+                  example: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                fromAmount:
+                  type: string
+                  description: Amount to swap in base units (e.g. wei for ETH)
+                  example: "1000000000000000000"
+                slippageBps:
+                  type: number
+                  description: Slippage tolerance in basis points (1 bps = 0.01%)
+                  default: 100
+                  minimum: 0
+                  maximum: 5000
+                  example: 100
+                network:
+                  type: string
+                  description: Network to perform the swap on
+                  enum: [base, ethereum, base-sepolia]
+                  default: base
+                  example: "base"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/swaps/execute" \
+              -H "Content-Type: application/json" \
+              -d '{"accountName":"myAccount","fromToken":"0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE","toToken":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","fromAmount":"1000000000000000000","slippageBps":100,"network":"base"}'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/swaps/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accountName: 'myAccount',
+                fromToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+                toToken: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+                fromAmount: '1000000000000000000',
+                slippageBps: 100,
+                network: 'base'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwapExecutionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /health:
     get:
       summary: Check API health
@@ -292,6 +492,260 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/swaps/tokens/{network}:
+    get:
+      summary: Get common token addresses
+      description: Returns a list of common token addresses for a specific network
+      tags:
+        - Swaps
+      parameters:
+        - name: network
+          in: path
+          required: true
+          description: Network name
+          schema:
+            type: string
+            enum: [base, base-sepolia, ethereum]
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      ETH:
+                        type: string
+                        example: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                      WETH:
+                        type: string
+                        example: "0x4200000000000000000000000000000000000006"
+                      USDC:
+                        type: string
+                        example: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                  message:
+                    type: string
+                    example: "Token addresses for base network"
+        '400':
+          description: Bad request - invalid network
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/swaps/price:
+    get:
+      summary: Get swap price estimate
+      description: Returns an estimate for a token swap
+      tags:
+        - Swaps
+      parameters:
+        - name: accountName
+          in: query
+          required: true
+          description: Name of the account to use for the swap
+          schema:
+            type: string
+        - name: fromToken
+          in: query
+          required: true
+          description: Address of the token to swap from
+          schema:
+            type: string
+        - name: toToken
+          in: query
+          required: true
+          description: Address of the token to swap to
+          schema:
+            type: string
+        - name: fromAmount
+          in: query
+          required: true
+          description: Amount to swap (in base units)
+          schema:
+            type: string
+        - name: network
+          in: query
+          required: false
+          description: Blockchain network
+          schema:
+            type: string
+            enum: [base, base-sepolia, ethereum]
+            default: base
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      liquidityAvailable:
+                        type: boolean
+                        example: true
+                      fromAmount:
+                        type: string
+                        example: "1000000000000000000"
+                      toAmount:
+                        type: string
+                        example: "1691323000"
+                      minToAmount:
+                        type: string
+                        example: "1674409770"
+                      grossAmount:
+                        type: string
+                        example: "1780340000"
+                      feeAmount:
+                        type: string
+                        example: "89017000"
+                      feePercentage:
+                        type: integer
+                        example: 5
+                      feeRecipient:
+                        type: string
+                        example: "0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0"
+                      expectedOutputFormatted:
+                        type: string
+                        example: "1691.32"
+                      minOutputFormatted:
+                        type: string
+                        example: "1674.41"
+                      exchangeRate:
+                        type: string
+                        example: "1780.34000000"
+                      estimatedGas:
+                        type: string
+                        example: "125000"
+                  message:
+                    type: string
+                    example: "Swap price estimated successfully (includes 5% fee)"
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/swaps/execute:
+    post:
+      summary: Execute a token swap
+      description: Executes a token swap transaction on the blockchain with a 5% fee sent to the fee recipient address
+      tags:
+        - Swaps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - fromToken
+                - toToken
+                - fromAmount
+              properties:
+                accountName:
+                  type: string
+                  description: Name of the source account
+                  example: "myWallet"
+                fromToken:
+                  type: string
+                  description: Address of the token to swap from
+                  example: "0x4200000000000000000000000000000000000006"
+                toToken:
+                  type: string
+                  description: Address of the token to swap to
+                  example: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                fromAmount:
+                  type: string
+                  description: Amount to swap (in base units)
+                  example: "1000000000000000000"
+                slippageBps:
+                  type: integer
+                  description: Slippage tolerance in basis points (1 bps = 0.01%)
+                  default: 100
+                  example: 100
+                network:
+                  type: string
+                  description: Blockchain network
+                  enum: [base, base-sepolia, ethereum]
+                  default: "base"
+                  example: "base"
+      responses:
+        '200':
+          description: Swap executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      transactionHash:
+                        type: string
+                        example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+                      fromAmount:
+                        type: string
+                        example: "1000000000000000000"
+                      toAmount:
+                        type: string
+                        example: "1780340000"
+                      grossAmount:
+                        type: string
+                        example: "1780340000"
+                      feeAmount:
+                        type: string
+                        example: "89017000"
+                      feePercentage:
+                        type: integer
+                        example: 5
+                      feeRecipient:
+                        type: string
+                        example: "0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0"
+                      amountReceived:
+                        type: string
+                        example: "1691.323"
+                      network:
+                        type: string
+                        example: "base"
+                  message:
+                    type: string
+                    example: "Swap executed successfully with 5% fee"
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     ApiResponse:
@@ -395,6 +849,134 @@ components:
             transactionHash:
               type: string
               example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+              
+    TokenListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Common tokens for base retrieved successfully"
+        data:
+          type: object
+          properties:
+            tokens:
+              type: object
+              additionalProperties:
+                type: string
+              example:
+                ETH: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                WETH: "0x4200000000000000000000000000000000000006"
+                USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                USDT: "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA"
+                
+    SwapPriceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Swap price estimated successfully (includes 5% fee)"
+        data:
+          type: object
+          properties:
+            liquidityAvailable:
+              type: boolean
+              description: Whether liquidity is available for this swap
+              example: true
+            fromAmount:
+              type: string
+              description: Amount of input token (in base units)
+              example: "1000000000000000000"
+            toAmount:
+              type: string
+              description: Amount of output token user will receive after fee (in base units)
+              example: "1710000000000000000"
+            minToAmount:
+              type: string
+              description: Minimum amount of output token considering slippage, after fee (in base units)
+              example: "1692900000000000000"
+            grossAmount:
+              type: string
+              description: Total amount of output token before fee deduction (in base units)
+              example: "1800000000000000000"
+            feeAmount:
+              type: string
+              description: Amount of output token taken as fee (in base units)
+              example: "90000000000000000"
+            feePercentage:
+              type: number
+              description: Fee percentage
+              example: 5
+            feeRecipient:
+              type: string
+              description: Address where the fee is sent
+              example: "0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0"
+            expectedOutputFormatted:
+              type: string
+              description: Formatted amount user will receive (human-readable)
+              example: "1.71"
+            minOutputFormatted:
+              type: string
+              description: Formatted minimum amount considering slippage (human-readable)
+              example: "1.6929"
+            exchangeRate:
+              type: string
+              description: Exchange rate between fromToken and toToken (after fee)
+              example: "1.71000000"
+              
+    SwapExecutionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Swap executed successfully with 5% fee"
+        data:
+          type: object
+          properties:
+            transactionHash:
+              type: string
+              description: Hash of the executed transaction
+              example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            fromAmount:
+              type: string
+              description: Amount of input token (in base units)
+              example: "1000000000000000000"
+            toAmount:
+              type: string
+              description: Amount of output token user receives after fee (in base units)
+              example: "1710000000000000000"
+            grossAmount:
+              type: string
+              description: Total amount of output token before fee deduction (in base units)
+              example: "1800000000000000000"
+            feeAmount:
+              type: string
+              description: Amount of output token taken as fee (in base units)
+              example: "90000000000000000"
+            feePercentage:
+              type: number
+              description: Fee percentage
+              example: 5
+            feeRecipient:
+              type: string
+              description: Address where the fee is sent
+              example: "0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0"
+            amountReceived:
+              type: string
+              description: Formatted amount user receives (human-readable)
+              example: "1.71"
+            network:
+              type: string
+              description: Network the swap was executed on
+              example: "base"
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

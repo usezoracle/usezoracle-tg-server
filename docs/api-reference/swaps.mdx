@@ -1,0 +1,267 @@
+# Swap API
+
+The Swap API allows you to exchange tokens on various networks with a simple interface. All swaps have a 5% fee that is sent to a designated fee recipient address.
+
+## Integration
+
+To integrate the Swap API into your application, use the following endpoints:
+
+```typescript
+// Get common token addresses for a network
+GET /api/swaps/tokens/{network}
+
+// Get swap price estimate (with 5% fee calculation)
+GET /api/swaps/price?accountName={accountName}&fromToken={fromToken}&toToken={toToken}&fromAmount={fromAmount}&network={network}
+
+// Execute token swap (with 5% fee)
+POST /api/swaps/execute
+```
+
+## Token Addresses
+
+Retrieve common token addresses for a specific network.
+
+### Request
+
+```
+GET /api/swaps/tokens/{network}
+```
+
+| Path Parameter | Type   | Description                                                                |
+|----------------|--------|----------------------------------------------------------------------------|
+| network        | string | Network to get tokens for. Options: `base`, `ethereum`, or `base-sepolia`. |
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "tokens": {
+      "ETH": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "WETH": "0x4200000000000000000000000000000000000006",
+      "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "USDT": "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA"
+    }
+  },
+  "message": "Common tokens for base retrieved successfully"
+}
+```
+
+## Get Swap Price
+
+Get a price estimation for swapping between tokens, including the 5% fee calculation.
+
+### Request
+
+```
+GET /api/swaps/price?accountName={accountName}&fromToken={fromToken}&toToken={toToken}&fromAmount={fromAmount}&network={network}
+```
+
+| Query Parameter | Type   | Required | Description                                                                       |
+|----------------|--------|----------|-----------------------------------------------------------------------------------|
+| accountName    | string | Yes      | Name of the account to use for the swap                                           |
+| fromToken      | string | Yes      | Contract address of the token to swap from (or "ETH" for native ETH)              |
+| toToken        | string | Yes      | Contract address of the token to swap to (or "ETH" for native ETH)                |
+| fromAmount     | string | Yes      | Amount of fromToken to swap (in base units, e.g., wei for ETH)                    |
+| network        | string | Yes      | Network for the swap. Options: `base`, `ethereum`, or `base-sepolia`.             |
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "liquidityAvailable": true,
+    "fromAmount": "1000000000000000000",
+    "toAmount": "1710000000000000000",
+    "minToAmount": "1692900000000000000",
+    "grossAmount": "1800000000000000000",
+    "feeAmount": "90000000000000000",
+    "feePercentage": 5,
+    "feeRecipient": "0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0",
+    "expectedOutputFormatted": "1.71",
+    "minOutputFormatted": "1.6929",
+    "exchangeRate": "1.71000000"
+  },
+  "message": "Swap price estimated successfully (includes 5% fee)"
+}
+```
+
+| Response Field         | Type    | Description                                                                  |
+|------------------------|---------|------------------------------------------------------------------------------|
+| liquidityAvailable     | boolean | Whether liquidity is available for this swap                                 |
+| fromAmount             | string  | Amount of input token (in base units)                                        |
+| toAmount               | string  | Amount of output token user will receive after fee (in base units)           |
+| minToAmount            | string  | Minimum amount of output token considering slippage, after fee (in base units)|
+| grossAmount            | string  | Total amount of output token before fee deduction (in base units)            |
+| feeAmount              | string  | Amount of output token taken as fee (in base units)                          |
+| feePercentage          | number  | Fee percentage (5%)                                                          |
+| feeRecipient           | string  | Address where the fee is sent                                                |
+| expectedOutputFormatted| string  | Formatted amount user will receive (human-readable)                          |
+| minOutputFormatted     | string  | Formatted minimum amount considering slippage (human-readable)               |
+| exchangeRate           | string  | Exchange rate between fromToken and toToken (after fee)                      |
+
+## Execute Swap
+
+Execute a token swap with a 5% fee applied. The fee is deducted from the output amount and sent to a designated fee recipient.
+
+### Request
+
+```
+POST /api/swaps/execute
+```
+
+**Headers:**
+```
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "accountName": "myAccount",
+  "fromToken": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+  "toToken": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "fromAmount": "1000000000000000000",
+  "slippageBps": 100,
+  "network": "base"
+}
+```
+
+| Body Parameter | Type   | Required | Description                                                                     |
+|----------------|--------|----------|---------------------------------------------------------------------------------|
+| accountName    | string | Yes      | Name of the account to use for the swap                                         |
+| fromToken      | string | Yes      | Contract address of the token to swap from (or "ETH" for native ETH)            |
+| toToken        | string | Yes      | Contract address of the token to swap to (or "ETH" for native ETH)              |
+| fromAmount     | string | Yes      | Amount of fromToken to swap (in base units, e.g., wei for ETH)                  |
+| slippageBps    | number | No       | Slippage tolerance in basis points (1 bps = 0.01%). Default: 100 (1%)           |
+| network        | string | Yes      | Network for the swap. Options: `base`, `ethereum`, or `base-sepolia`.           |
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "transactionHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "fromAmount": "1000000000000000000",
+    "toAmount": "1710000000000000000",
+    "grossAmount": "1800000000000000000",
+    "feeAmount": "90000000000000000",
+    "feePercentage": 5,
+    "feeRecipient": "0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0",
+    "amountReceived": "1.71",
+    "network": "base"
+  },
+  "message": "Swap executed successfully with 5% fee"
+}
+```
+
+| Response Field   | Type   | Description                                                           |
+|------------------|--------|-----------------------------------------------------------------------|
+| transactionHash  | string | Hash of the swap transaction                                          |
+| fromAmount       | string | Amount of input token (in base units)                                 |
+| toAmount         | string | Amount of output token user receives after fee (in base units)        |
+| grossAmount      | string | Total amount of output token before fee deduction (in base units)     |
+| feeAmount        | string | Amount of output token taken as fee (in base units)                   |
+| feePercentage    | number | Fee percentage (5%)                                                   |
+| feeRecipient     | string | Address where the fee is sent                                         |
+| amountReceived   | string | Formatted amount user receives (human-readable)                       |
+| network          | string | Network the swap was executed on                                      |
+
+## Fee Implementation
+
+All swaps include a 5% fee that is calculated on the gross output amount and sent to a designated fee recipient address.
+
+### Fee Calculation
+
+1. The gross amount is determined (amount of tokens received from the swap)
+2. 5% of this gross amount is calculated as the fee
+3. The fee is deducted from the gross amount to get the net amount the user receives
+4. The fee is sent to the specified recipient address: `0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0`
+
+### Example Fee Calculation
+
+For a swap that would yield 1800 USDC tokens (gross amount):
+- Fee: 1800 * 5% = 90 USDC
+- Net amount user receives: 1800 - 90 = 1710 USDC
+- Fee recipient `0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0` receives 90 USDC
+
+## Code Examples
+
+### JavaScript Example (Node.js)
+
+```javascript
+const axios = require('axios');
+
+// Get price estimation with 5% fee
+async function getSwapPrice() {
+  const params = {
+    accountName: 'myAccount',
+    fromToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', // ETH
+    toToken: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC
+    fromAmount: '1000000000000000000', // 1 ETH
+    network: 'base'
+  };
+
+  const response = await axios.get('https://api.usezoracle.com/api/swaps/price', { params });
+  return response.data;
+}
+
+// Execute swap with 5% fee
+async function executeSwap() {
+  const data = {
+    accountName: 'myAccount',
+    fromToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', // ETH
+    toToken: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC
+    fromAmount: '1000000000000000000', // 1 ETH
+    slippageBps: 100, // 1% slippage tolerance
+    network: 'base'
+  };
+
+  const response = await axios.post('https://api.usezoracle.com/api/swaps/execute', data);
+  return response.data;
+}
+
+// Example usage
+getSwapPrice()
+  .then(priceData => {
+    console.log('Swap price with 5% fee:', priceData);
+    
+    // If price looks good, execute the swap
+    return executeSwap();
+  })
+  .then(swapResult => {
+    console.log('Swap executed successfully:', swapResult);
+    console.log(`Fee amount (5%): ${swapResult.data.feeAmount}`);
+    console.log(`Fee recipient: ${swapResult.data.feeRecipient}`);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+```
+
+### cURL Examples
+
+**Get Token List:**
+```bash
+curl "https://api.usezoracle.com/api/swaps/tokens/base"
+```
+
+**Get Swap Price:**
+```bash
+curl "https://api.usezoracle.com/api/swaps/price?accountName=myAccount&fromToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE&toToken=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913&fromAmount=1000000000000000000&network=base"
+```
+
+**Execute Swap:**
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"accountName":"myAccount","fromToken":"0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE","toToken":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","fromAmount":"1000000000000000000","slippageBps":100,"network":"base"}' "https://api.usezoracle.com/api/swaps/execute"
+```
+
+## Implementation Notes
+
+- All token amounts should be provided in base units (e.g., wei for ETH, which has 18 decimals)
+- The API automatically handles token decimals for formatted outputs
+- The 5% fee is non-adjustable and applies to all swap transactions
+- Fee recipient address is fixed at `0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0`
