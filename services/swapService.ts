@@ -5,16 +5,20 @@ type EvmSwapsNetwork = "base" | "ethereum";
 
 export class SwapService {
   private static instance: SwapService;
-  private cdp: CdpClient;
+  private cdp: CdpClient | null = null;
   private readonly FEE_PERCENTAGE = 5; // 5% swap fee
   private readonly FEE_RECIPIENT = "0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0" as `0x${string}`; // Fee recipient address
 
-  private constructor() {
-    this.cdp = new CdpClient({
-      apiKeyId: process.env.CDP_API_KEY_ID,
-      apiKeySecret: process.env.CDP_API_KEY_SECRET,
-      walletSecret: process.env.CDP_WALLET_SECRET,
-    });
+  private constructor() {}
+
+  private initializeCdp() {
+    if (!this.cdp) {
+      this.cdp = new CdpClient({
+        apiKeyId: process.env.CDP_API_KEY_ID,
+        apiKeySecret: process.env.CDP_API_KEY_SECRET,
+        walletSecret: process.env.CDP_WALLET_SECRET,
+      });
+    }
   }
 
   static getInstance(): SwapService {
@@ -35,14 +39,15 @@ export class SwapService {
     network: EvmSwapsNetwork;
   }) {
     try {
+      this.initializeCdp();
       // Get the account
-      const account = await this.cdp.evm.getAccount({ name: params.accountName });
+      const account = await this.cdp!.evm.getAccount({ name: params.accountName });
 
       // Convert amount to BigInt
       const fromAmount = BigInt(params.fromAmount);
 
       // Get swap price
-      const swapPrice = await this.cdp.evm.getSwapPrice({
+      const swapPrice = await this.cdp!.evm.getSwapPrice({
         fromToken: params.fromToken as `0x${string}`,
         toToken: params.toToken as `0x${string}`,
         fromAmount,
@@ -101,8 +106,9 @@ export class SwapService {
     network: EvmSwapsNetwork;
   }) {
     try {
+      this.initializeCdp();
       // Get the account
-      const account = await this.cdp.evm.getAccount({ name: params.accountName });
+      const account = await this.cdp!.evm.getAccount({ name: params.accountName });
 
       // Convert amount to BigInt
       const fromAmount = BigInt(params.fromAmount);
@@ -168,7 +174,8 @@ export class SwapService {
    */
   async getOrCreateAccount(name: string) {
     try {
-      const account = await this.cdp.evm.getOrCreateAccount({ name });
+      this.initializeCdp();
+      const account = await this.cdp!.evm.getOrCreateAccount({ name });
       return {
         success: true,
         data: account,
