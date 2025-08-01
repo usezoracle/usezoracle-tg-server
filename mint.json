@@ -28,7 +28,7 @@
     {
       "name": "API Reference",
       "icon": "code",
-      "url": "api-reference"
+      "url": "docs/api-reference/accounts"
     },
     {
       "name": "GitHub",
@@ -51,7 +51,8 @@
       "pages": [
         "docs/api-reference/accounts",
         "docs/api-reference/transactions",
-        "docs/api-reference/balances"
+        "docs/api-reference/balances",
+        "docs/api-reference/swaps"
       ]
     }
   ],
@@ -59,5 +60,5 @@
     "twitter": "https://twitter.com/usezoracle",
     "github": "https://github.com/yourusername/usezoracle-telegrambot"
   },
-  "openapi": "openapi.yaml"
+  "openapi": "http://localhost:3002/openapi.yaml"
 }

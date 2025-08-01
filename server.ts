@@ -10,6 +10,7 @@ import { transactionRoutes } from "./routes/transactionRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { rateLimiter } from "./middleware/rateLimiter.js";
 import { balanceRoutes } from "./routes/balanceRoutes.js";
+import { swapRoutes } from "./routes/swapRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -42,6 +43,7 @@ app.get("/health", (req, res) => {
 app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/balances", balanceRoutes);
+app.use("/api/swaps", swapRoutes);
 
 // Error handling
 app.use(errorHandler);
