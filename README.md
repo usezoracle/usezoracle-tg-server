@@ -153,7 +153,7 @@ Transfer tokens between accounts.
 #### Get Account Balances
 **GET** `/api/balances/{accountName}`
 
-Get token balances for a specific account.
+Get token balances for a specific account with USD values and price information.
 
 **Example:** `GET /api/balances/techwithmide-ox`
 
@@ -164,22 +164,41 @@ Get token balances for a specific account.
   "data": {
     "account": "techwithmide-ox",
     "network": "base",
+    "totalUsdValue": 2500.50,
     "balances": [
       {
-        "token": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-        "name": "Ethereum",
-        "symbol": "ETH",
-        "decimals": 18,
-        "balance": "0.001234567890123456",
-        "formattedBalance": "0.001234567890123456"
+        "token": {
+          "contractAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+          "name": "Ethereum",
+          "symbol": "ETH",
+          "decimals": 18
+        },
+        "amount": {
+          "raw": "1000000000000000000",
+          "formatted": "1.0"
+        },
+        "price": {
+          "usd": 2500.50,
+          "usd_24h_change": 2.5
+        },
+        "usdValue": 2500.50
       },
       {
-        "token": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        "name": "USD Coin",
-        "symbol": "USDC",
-        "decimals": 6,
-        "balance": "1000000",
-        "formattedBalance": "1.0"
+        "token": {
+          "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "name": "USD Coin",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "amount": {
+          "raw": "1000000",
+          "formatted": "1.0"
+        },
+        "price": {
+          "usd": 1.0,
+          "usd_24h_change": 0.0
+        },
+        "usdValue": 1.0
       }
     ]
   },
@@ -204,16 +223,10 @@ All endpoints return consistent error responses:
 ### Common Error Codes
 - `400` - Bad Request (validation errors)
 - `404` - Route not found
-- `429` - Rate limit exceeded
+
 - `500` - Internal server error
 
----
 
-## Rate Limiting
-- **Limit:** 100 requests per 15 minutes per IP
-- **Headers:** `Retry-After` included in rate limit responses
-
----
 
 ## Example Usage
 
@@ -289,5 +302,5 @@ This means the server needs to be updated to Node.js 19+ to support the CDP SDK.
 ### Common Issues
 - **400 Bad Request**: Check that all required fields are provided and in the correct format
 - **404 Not Found**: Verify the endpoint URL is correct
-- **429 Too Many Requests**: You've exceeded the rate limit. Wait before making more requests
+
 - **500 Internal Server Error**: Server-side issue. Try again later or contact support 

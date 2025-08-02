@@ -8,7 +8,6 @@ import { fileURLToPath } from "url";
 import { accountRoutes } from "./routes/accountRoutes.js";
 import { transactionRoutes } from "./routes/transactionRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-import { rateLimiter } from "./middleware/rateLimiter.js";
 import { balanceRoutes } from "./routes/balanceRoutes.js";
 import { swapRoutes } from "./routes/swapRoutes.js";
 dotenv.config();
@@ -23,7 +22,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
-app.use(rateLimiter);
 
 // API Documentation
 const __filename = fileURLToPath(import.meta.url);

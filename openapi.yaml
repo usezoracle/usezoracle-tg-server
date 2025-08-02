@@ -360,7 +360,7 @@ paths:
   /api/balances/{accountName}:
     get:
       summary: Get account balances
-      description: Returns token balances for a specific account
+      description: Returns token balances for a specific account with USD values and price information
       tags:
         - Balances
       x-code-samples:
@@ -805,6 +805,10 @@ components:
             network:
               type: string
               example: "base"
+            totalUsdValue:
+              type: number
+              description: "Total USD value of all token balances"
+              example: 2500.50
             balances:
               type: array
               items:
@@ -834,6 +838,23 @@ components:
                       formatted:
                         type: string
                         example: "1.0"
+                  price:
+                    type: object
+                    nullable: true
+                    description: "Token price information in USD"
+                    properties:
+                      usd:
+                        type: number
+                        description: "Current USD price of the token"
+                        example: 2500.50
+                      usd_24h_change:
+                        type: number
+                        description: "24-hour price change percentage"
+                        example: 2.5
+                  usdValue:
+                    type: number
+                    description: "USD value of the token balance"
+                    example: 2500.50
     TransferResponse:
       type: object
       properties:
