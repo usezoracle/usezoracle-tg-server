@@ -6,12 +6,24 @@ let cdp: CdpClient;
 let publicClient: any;
 
 const initializeClient = () => {
+  // Debug environment variables
+  console.log('🔍 Debugging CDP Client initialization:');
+  console.log('CDP_API_KEY_ID exists:', !!process.env.CDP_API_KEY_ID);
+  console.log('CDP_API_KEY_SECRET exists:', !!process.env.CDP_API_KEY_SECRET);
+  console.log('CDP_WALLET_SECRET exists:', !!process.env.CDP_WALLET_SECRET);
+  
   if (!cdp) {
-    cdp = new CdpClient({
-      apiKeyId: process.env.CDP_API_KEY_ID,
-      apiKeySecret: process.env.CDP_API_KEY_SECRET,
-      walletSecret: process.env.CDP_WALLET_SECRET,
-    });
+    try {
+      cdp = new CdpClient({
+        apiKeyId: process.env.CDP_API_KEY_ID!,
+        apiKeySecret: process.env.CDP_API_KEY_SECRET!,
+        walletSecret: process.env.CDP_WALLET_SECRET!,
+      });
+      console.log('✅ CDP Client initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize CDP Client:', error);
+      throw error;
+    }
   }
 
   if (!publicClient) {
