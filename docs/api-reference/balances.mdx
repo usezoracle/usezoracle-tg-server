@@ -5,11 +5,11 @@ description: 'API endpoints for checking cryptocurrency balances'
 
 # Balances API
 
-The Balances API allows you to check token balances for cryptocurrency accounts.
+The Balances API allows you to check token balances for cryptocurrency accounts with USD values and price information.
 
 ## Get Account Balances
 
-Returns token balances for a specific account.
+Returns token balances for a specific account with USD values and price information.
 
 <CodeGroup>
 ```bash Get Balances
@@ -43,6 +43,9 @@ fetch('https://usezoracle-telegrambot-production.up.railway.app/api/balances/myW
     <ResponseField name="network" type="string">
       The blockchain network (e.g., "base")
     </ResponseField>
+    <ResponseField name="totalUsdValue" type="number">
+      Total USD value of all token balances
+    </ResponseField>
     <ResponseField name="balances" type="array">
       Array of balance objects
       <Expandable title="Balance object">
@@ -72,6 +75,19 @@ fetch('https://usezoracle-telegrambot-production.up.railway.app/api/balances/myW
             </ResponseField>
           </Expandable>
         </ResponseField>
+        <ResponseField name="price" type="object" nullable>
+          <Expandable title="Price object">
+            <ResponseField name="usd" type="number">
+              Current USD price of the token
+            </ResponseField>
+            <ResponseField name="usd_24h_change" type="number">
+              24-hour price change percentage
+            </ResponseField>
+          </Expandable>
+        </ResponseField>
+        <ResponseField name="usdValue" type="number">
+          USD value of the token balance
+        </ResponseField>
       </Expandable>
     </ResponseField>
   </Expandable>
@@ -88,6 +104,7 @@ fetch('https://usezoracle-telegrambot-production.up.railway.app/api/balances/myW
   "data": {
     "account": "myWallet",
     "network": "base",
+    "totalUsdValue": 2500.50,
     "balances": [
       {
         "token": {
@@ -99,7 +116,12 @@ fetch('https://usezoracle-telegrambot-production.up.railway.app/api/balances/myW
         "amount": {
           "raw": "1000000000000000000",
           "formatted": "1.0"
-        }
+        },
+        "price": {
+          "usd": 2500.50,
+          "usd_24h_change": 2.5
+        },
+        "usdValue": 2500.50
       },
       {
         "token": {
@@ -111,7 +133,12 @@ fetch('https://usezoracle-telegrambot-production.up.railway.app/api/balances/myW
         "amount": {
           "raw": "1000000",
           "formatted": "1.0"
-        }
+        },
+        "price": {
+          "usd": 1.0,
+          "usd_24h_change": 0.0
+        },
+        "usdValue": 1.0
       }
     ]
   },

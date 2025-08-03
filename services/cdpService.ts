@@ -53,7 +53,14 @@ interface TokenMetadata {
   decimals: number;
 }
 
+interface TokenPrice {
+  usd: number;
+  usd_24h_change: number;
+}
+
 const tokenCache = new Map();
+const priceCache = new Map<string, { price: TokenPrice; timestamp: number }>();
+const PRICE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export class CdpService {
   private static instance: CdpService;
@@ -182,6 +189,16 @@ export class CdpService {
           const metadata = await this.fetchTokenMetadata(
             balance.token.contractAddress
           );
+          
+          // Get token price in USD
+          const price = await this.fetchTokenPrice(metadata.symbol, balance.token.contractAddress);
+          
+          // Calculate USD value
+          const formattedAmount = this.formatAmount(
+            balance.amount.amount.toString(),
+            metadata.decimals
+          );
+          const usdValue = price ? parseFloat(formattedAmount) * price.usd : 0;
 
           return {
             token: {
@@ -192,14 +209,21 @@ export class CdpService {
             },
             amount: {
               raw: balance.amount.amount.toString(),
-              formatted: this.formatAmount(
-                balance.amount.amount.toString(),
-                metadata.decimals
-              ),
+              formatted: formattedAmount,
             },
+            price: price ? {
+              usd: price.usd,
+              usd_24h_change: price.usd_24h_change,
+            } : null,
+            usdValue: usdValue,
           };
         })
       );
+
+      // Calculate total USD value
+      const totalUsdValue = enhancedBalances.reduce((sum, balance) => {
+        return sum + (balance.usdValue || 0);
+      }, 0);
 
       return {
         success: true,
@@ -207,12 +231,219 @@ export class CdpService {
           account: accountName,
           network: "base",
           balances: enhancedBalances,
+          totalUsdValue: totalUsdValue,
         },
         message: "Balances retrieved successfully",
       };
     } catch (error) {
       throw new Error(`Failed to get balances: ${(error as Error).message}`);
     }
+  }
+
+  private async fetchTokenPrice(symbol: string, contractAddress?: string): Promise<TokenPrice | null> {
+    // Skip price fetching for unknown tokens
+    if (symbol === "UNKNOWN") {
+      return null;
+    }
+
+    const cacheKey = contractAddress || symbol.toLowerCase();
+    const now = Date.now();
+    const cached = priceCache.get(cacheKey);
+
+    // Return cached price if it's still valid
+    if (cached && (now - cached.timestamp) < PRICE_CACHE_DURATION) {
+      return cached.price;
+    }
+
+    try {
+      let price: TokenPrice | null = null;
+
+      // Try GeckoTerminal first if we have a contract address
+      if (contractAddress && contractAddress !== "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE") {
+        price = await this.fetchPriceFromGeckoTerminal(contractAddress);
+      }
+
+      // Fallback to CoinGecko if GeckoTerminal didn't work
+      if (!price) {
+        price = await this.fetchPriceFromCoinGecko(symbol);
+      }
+
+      if (price) {
+        // Cache the price
+        priceCache.set(cacheKey, { price, timestamp: now });
+        return price;
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`Error fetching price for ${symbol}: ${(error as Error).message}`);
+      return null;
+    }
+  }
+
+  private async fetchPriceFromGeckoTerminal(contractAddress: string): Promise<TokenPrice | null> {
+    try {
+      // Use GeckoTerminal API to get token price by contract address
+      const response = await fetch(
+        `https://api.geckoterminal.com/api/v2/networks/base/tokens/${contractAddress}`,
+        {
+          headers: {
+            'accept': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch price from GeckoTerminal for ${contractAddress}: ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json() as {
+        data: {
+          attributes: {
+            price_usd: string;
+            symbol: string;
+            name: string;
+          };
+        };
+      };
+      
+      if (data.data && data.data.attributes && data.data.attributes.price_usd) {
+        const priceUsd = parseFloat(data.data.attributes.price_usd);
+        return {
+          usd: priceUsd,
+          usd_24h_change: 0, // GeckoTerminal doesn't provide 24h change in this endpoint
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`Error fetching price from GeckoTerminal for ${contractAddress}: ${(error as Error).message}`);
+      return null;
+    }
+  }
+
+  private async fetchPriceFromCoinGecko(symbol: string): Promise<TokenPrice | null> {
+    try {
+      // Use CoinGecko API to get token prices
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${this.getCoinGeckoId(symbol)}&vs_currencies=usd&include_24hr_change=true`
+      );
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch price from CoinGecko for ${symbol}: ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json() as Record<string, { usd: number; usd_24h_change?: number }>;
+      const coinId = this.getCoinGeckoId(symbol);
+      
+      if (data[coinId]) {
+        return {
+          usd: data[coinId].usd,
+          usd_24h_change: data[coinId].usd_24h_change || 0,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`Error fetching price from CoinGecko for ${symbol}: ${(error as Error).message}`);
+      return null;
+    }
+  }
+
+  private getCoinGeckoId(symbol: string): string {
+    // Map common token symbols to CoinGecko IDs
+    const symbolToId: Record<string, string> = {
+      "ETH": "ethereum",
+      "WETH": "ethereum", // WETH price is same as ETH
+      "USDC": "usd-coin",
+      "USDT": "tether",
+      "DAI": "dai",
+      "WBTC": "wrapped-bitcoin",
+      "LINK": "chainlink",
+      "UNI": "uniswap",
+      "AAVE": "aave",
+      "COMP": "compound-governance-token",
+      "CRV": "curve-dao-token",
+      "YFI": "yearn-finance",
+      "SNX": "havven",
+      "MKR": "maker",
+      "BAL": "balancer",
+      "SUSHI": "sushi",
+      "1INCH": "1inch",
+      "ZRX": "0x",
+      "BAT": "basic-attention-token",
+      "REP": "augur",
+      "ZEC": "zcash",
+      "DASH": "dash",
+      "LTC": "litecoin",
+      "BCH": "bitcoin-cash",
+      "XRP": "ripple",
+      "ADA": "cardano",
+      "DOT": "polkadot",
+      "SOL": "solana",
+      "MATIC": "matic-network",
+      "AVAX": "avalanche-2",
+      "FTM": "fantom",
+      "NEAR": "near",
+      "ALGO": "algorand",
+      "ATOM": "cosmos",
+      "ICP": "internet-computer",
+      "FIL": "filecoin",
+      "TRX": "tron",
+      "EOS": "eos",
+      "XLM": "stellar",
+      "VET": "vechain",
+      "THETA": "theta-token",
+      "XTZ": "tezos",
+      "NEO": "neo",
+      "IOTA": "iota",
+      "XMR": "monero",
+      "DOGE": "dogecoin",
+      "SHIB": "shiba-inu",
+      "LUNC": "terra-luna",
+      "LUNA": "terra-luna-2",
+      "UST": "terrausd",
+      "BUSD": "binance-usd",
+      "BNB": "binancecoin",
+      "CAKE": "pancakeswap-token",
+      "CHZ": "chiliz",
+      "HOT": "holochain",
+      "ENJ": "enjincoin",
+      "MANA": "decentraland",
+      "SAND": "the-sandbox",
+      "AXS": "axie-infinity",
+      "GALA": "gala",
+      "ROBLOX": "roblox",
+      "GODS": "gods-unchained",
+      "IMX": "immutable-x",
+      "OP": "optimism",
+      "ARB": "arbitrum",
+      "MAGIC": "magic",
+      "PEPE": "pepe",
+      "WIF": "dogwifhat",
+      "BONK": "bonk",
+      "JUP": "jupiter",
+      "PYTH": "pyth-network",
+      "JTO": "jito",
+      "W": "wormhole",
+      "STRK": "starknet",
+      "BLAST": "blast",
+      "MODE": "mode",
+      "ZORA": "zora",
+      "BASE": "base",
+      "LINEA": "linea",
+      "SCROLL": "scroll",
+      "POLYGON": "matic-network",
+      "ARBITRUM": "arbitrum",
+      "OPTIMISM": "optimism",
+      "ETHEREUM": "ethereum",
+      "BITCOIN": "bitcoin",
+      "BTC": "bitcoin",
+    };
+
+    return symbolToId[symbol] || symbol.toLowerCase();
   }
 
   private async fetchTokenMetadata(contractAddress: `0x${string}`) {
