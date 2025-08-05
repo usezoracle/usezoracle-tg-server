@@ -74,14 +74,14 @@ export const validateSwapPrice = (
   }
 
   // Validate token addresses
-  if (!TOKEN_ADDRESS_REGEX.test(fromToken) && fromToken !== 'ETH') {
+  if (!TOKEN_ADDRESS_REGEX.test(fromToken) && fromToken !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
     return res.status(400).json({
       success: false,
       error: "Invalid fromToken address format"
     });
   }
 
-  if (!TOKEN_ADDRESS_REGEX.test(toToken) && toToken !== 'ETH') {
+  if (!TOKEN_ADDRESS_REGEX.test(toToken) && toToken !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
     return res.status(400).json({
       success: false,
       error: "Invalid toToken address format"
@@ -123,14 +123,14 @@ export const validateSwapExecution = (
   }
 
   // Validate token addresses
-  if (!TOKEN_ADDRESS_REGEX.test(fromToken) && fromToken !== 'ETH') {
+  if (!TOKEN_ADDRESS_REGEX.test(fromToken) && fromToken !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
     return res.status(400).json({
       success: false,
       error: "Invalid fromToken address format"
     });
   }
 
-  if (!TOKEN_ADDRESS_REGEX.test(toToken) && toToken !== 'ETH') {
+  if (!TOKEN_ADDRESS_REGEX.test(toToken) && toToken !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
     return res.status(400).json({
       success: false,
       error: "Invalid toToken address format"

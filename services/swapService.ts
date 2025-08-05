@@ -1,15 +1,33 @@
 import { CdpClient } from "@coinbase/cdp-sdk";
+import {
+  parseUnits,
+  createPublicClient,
+  http,
+  erc20Abi,
+  encodeFunctionData,
+  formatEther,
+  type Address,
+} from "viem";
+import { base } from "viem/chains";
 
 // Define supported networks
 type EvmSwapsNetwork = "base" | "ethereum";
 
+// Permit2 contract address is the same across all networks
+const PERMIT2_ADDRESS: Address = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+
 export class SwapService {
   private static instance: SwapService;
   private cdp: CdpClient | null = null;
-  private readonly FEE_PERCENTAGE = 5; // 5% swap fee
-  private readonly FEE_RECIPIENT = "0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0" as `0x${string}`; // Fee recipient address
+  private publicClient: any = null;
 
-  private constructor() {}
+  private constructor() {
+    // Initialize viem public client for transaction monitoring
+    this.publicClient = createPublicClient({
+      chain: base,
+      transport: http("https://base-mainnet.g.alchemy.com/v2/dnbpgJAxbCT9dbs-cHKAXVSYLNYDrt_n"),
+    });
+  }
 
   private initializeCdp() {
     if (!this.cdp) {
@@ -29,7 +47,7 @@ export class SwapService {
   }
 
   /**
-   * Get price estimate for a swap with fee calculation
+   * Get price estimate for a swap
    */
   async getSwapPrice(params: {
     accountName: string;
@@ -41,7 +59,9 @@ export class SwapService {
     try {
       this.initializeCdp();
       // Get the account
-      const account = await this.cdp!.evm.getAccount({ name: params.accountName });
+      const account = await this.cdp!.evm.getAccount({
+        name: params.accountName,
+      });
 
       // Convert amount to BigInt
       const fromAmount = BigInt(params.fromAmount);
@@ -52,42 +72,33 @@ export class SwapService {
         toToken: params.toToken as `0x${string}`,
         fromAmount,
         network: params.network,
-        taker: account.address
+        taker: account.address,
       });
-      
+
       // Check if liquidity is available
       if (!swapPrice.liquidityAvailable) {
         return {
           success: false,
           error: "No liquidity available for this swap",
-          message: "Insufficient liquidity for this swap"
+          message: "Insufficient liquidity for this swap",
         };
       }
-
-      // Calculate fee (5% of the received amount)
-      const feeAmount = (swapPrice.toAmount * BigInt(this.FEE_PERCENTAGE)) / BigInt(100);
-      const userAmount = swapPrice.toAmount - feeAmount;
-      
-      // Also calculate min amount after fee
-      const minFeeAmount = (swapPrice.minToAmount * BigInt(this.FEE_PERCENTAGE)) / BigInt(100);
-      const minUserAmount = swapPrice.minToAmount - minFeeAmount;
 
       return {
         success: true,
         data: {
           liquidityAvailable: true,
           fromAmount: swapPrice.fromAmount.toString(),
-          toAmount: userAmount.toString(), // Amount after fee deduction
-          minToAmount: minUserAmount.toString(), // Min amount after fee deduction
-          grossAmount: swapPrice.toAmount.toString(), // Total amount before fee
-          feeAmount: feeAmount.toString(),
-          feePercentage: this.FEE_PERCENTAGE,
-          feeRecipient: this.FEE_RECIPIENT,
-          expectedOutputFormatted: this.formatAmount(userAmount.toString()),
-          minOutputFormatted: this.formatAmount(minUserAmount.toString()),
-          exchangeRate: this.calculateExchangeRate(swapPrice.fromAmount, userAmount)
+          toAmount: swapPrice.toAmount.toString(),
+          minToAmount: swapPrice.minToAmount.toString(),
+          expectedOutputFormatted: this.formatAmount(swapPrice.toAmount.toString()),
+          minOutputFormatted: this.formatAmount(swapPrice.minToAmount.toString()),
+          exchangeRate: this.calculateExchangeRate(
+            swapPrice.fromAmount,
+            swapPrice.toAmount
+          ),
         },
-        message: "Swap price estimated successfully (includes 5% fee)"
+        message: "Swap price estimated successfully",
       };
     } catch (error) {
       throw new Error(`Failed to get swap price: ${(error as Error).message}`);
@@ -95,7 +106,8 @@ export class SwapService {
   }
 
   /**
-   * Execute a swap between tokens with fee
+   * Execute a swap between tokens
+   * Handles token allowance checking and approval automatically
    */
   async executeSwap(params: {
     accountName: string;
@@ -108,12 +120,34 @@ export class SwapService {
     try {
       this.initializeCdp();
       // Get the account
-      const account = await this.cdp!.evm.getAccount({ name: params.accountName });
+      const account = await this.cdp!.evm.getAccount({
+        name: params.accountName,
+      });
 
       // Convert amount to BigInt
       const fromAmount = BigInt(params.fromAmount);
 
-      // Execute swap in one call
+      // Check if fromToken is native ETH
+      const isNativeAsset = params.fromToken.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+      console.log(
+        `Executing swap: ${fromAmount.toString()} ${params.fromToken} -> ${
+          params.toToken
+        } on network: ${params.network}`
+      );
+
+      // Handle token allowance check and approval if needed (only for non-native assets)
+      if (!isNativeAsset) {
+        await this.handleTokenAllowance(
+          account.address as Address,
+          params.fromToken as Address,
+          fromAmount,
+          params.network
+        );
+      }
+
+      // Execute swap
+      console.log(`Initiating swap transaction...`);
       const swapResult = await account.swap({
         network: params.network,
         fromToken: params.fromToken as `0x${string}`,
@@ -122,50 +156,196 @@ export class SwapService {
         slippageBps: params.slippageBps || 100, // Default 1% slippage tolerance
       });
 
-      // Use the original amount as a base for calculation
-      // In a production environment, you would ideally query the blockchain
-      // to get the actual amount received in the transaction
-      const receivedAmount = fromAmount;
-        
-      // Calculate fee (5% of the received amount)
-      const feeAmount = (receivedAmount * BigInt(this.FEE_PERCENTAGE)) / BigInt(100);
-      const userAmount = receivedAmount - feeAmount;
-      
-      // Only transfer fee if it's a significant amount (greater than dust)
-      if (feeAmount > BigInt(0)) {
-        try {
-          // Transfer the fee to the fee recipient
-          const feeTransfer = await account.transfer({
-            to: this.FEE_RECIPIENT,
-            amount: feeAmount,
-            token: params.toToken as `0x${string}`,
-            network: params.network,
-          });
-          
-          console.log(`Fee transfer successful: ${feeTransfer.transactionHash}`);
-        } catch (feeError) {
-          // Log fee transfer error but don't fail the entire operation
-          console.error(`Fee transfer failed: ${(feeError as Error).message}`);
+      console.log(`Swap executed successfully: ${swapResult.transactionHash}`);
+
+      // Wait for transaction confirmation
+      console.log(`Waiting for transaction confirmation...`);
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: swapResult.transactionHash,
+      });
+
+      // Ensure all BigInt values are converted to strings
+      const blockNumber = receipt.blockNumber.toString();
+      const gasUsed = receipt.gasUsed.toString();
+
+      // Create response object with all BigInt values converted to strings
+      const responseData = {
+        transactionHash: swapResult.transactionHash,
+        fromAmount: fromAmount.toString(),
+        network: params.network,
+        blockNumber: blockNumber,
+        gasUsed: gasUsed,
+        status: receipt.status === "success" ? "Success" : "Failed",
+        transactionExplorer: `https://basescan.org/tx/${swapResult.transactionHash}`,
+      };
+
+      // Helper function to serialize BigInt values
+      const serializeBigInts = (obj: any): any => {
+        if (obj === null || obj === undefined) {
+          return obj;
         }
-      }
+        
+        if (typeof obj === 'bigint') {
+          return obj.toString();
+        }
+        
+        if (Array.isArray(obj)) {
+          return obj.map(serializeBigInts);
+        }
+        
+        if (typeof obj === 'object') {
+          const result: any = {};
+          for (const [key, value] of Object.entries(obj)) {
+            result[key] = serializeBigInts(value);
+          }
+          return result;
+        }
+        
+        return obj;
+      };
+
+      // Serialize any BigInt values in the response
+      const serializedData = serializeBigInts(responseData);
 
       return {
         success: true,
-        data: {
-          transactionHash: swapResult.transactionHash,
-          fromAmount: fromAmount.toString(),
-          toAmount: userAmount.toString(), // Amount after fee deduction
-          grossAmount: receivedAmount.toString(), // Total amount before fee
-          feeAmount: feeAmount.toString(),
-          feePercentage: this.FEE_PERCENTAGE,
-          feeRecipient: this.FEE_RECIPIENT,
-          amountReceived: this.formatAmount(userAmount.toString()),
-          network: params.network
-        },
-        message: "Swap executed successfully with 5% fee"
+        data: serializedData,
+        message: "Swap executed successfully",
       };
     } catch (error) {
+      console.error("Swap execution error:", error);
+      
+      // Handle specific error cases
+      if ((error as Error).message?.includes("Insufficient liquidity")) {
+        throw new Error("Insufficient liquidity for this swap pair or amount. Try reducing the swap amount or using a different token pair.");
+      }
+      
+      if ((error as Error).message?.includes("Request timed out")) {
+        throw new Error("Swap request timed out. Please try again with a smaller amount or check network conditions.");
+      }
+      
+      if ((error as Error).message?.includes("Invalid request")) {
+        throw new Error("Invalid swap request. Please check token addresses and amounts.");
+      }
+      
       throw new Error(`Failed to execute swap: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Handles token allowance check and approval if needed
+   * @param ownerAddress - The address of the token owner
+   * @param tokenAddress - The address of the token to be sent
+   * @param fromAmount - The amount to be sent
+   * @param network - The network to perform the operation on
+   * @returns A promise that resolves when allowance is sufficient
+   */
+  private async handleTokenAllowance(
+    ownerAddress: Address,
+    tokenAddress: Address,
+    fromAmount: bigint,
+    network: EvmSwapsNetwork
+  ): Promise<void> {
+    // Check allowance before attempting the swap
+    const currentAllowance = await this.getAllowance(
+      ownerAddress,
+      tokenAddress
+    );
+
+    // If allowance is insufficient, approve tokens
+    if (currentAllowance < fromAmount) {
+      console.log(
+        `\nAllowance insufficient. Current: ${currentAllowance.toString()}, Required: ${fromAmount.toString()}`
+      );
+
+      // Set the allowance to the required amount
+      await this.approveTokenAllowance(
+        ownerAddress,
+        tokenAddress,
+        fromAmount,
+        network
+      );
+      console.log(`Set allowance to ${fromAmount.toString()}`);
+    } else {
+      console.log(
+        `\nToken allowance sufficient. Current: ${currentAllowance.toString()}, Required: ${fromAmount.toString()}`
+      );
+    }
+  }
+
+  /**
+   * Handle approval for token allowance if needed
+   * @param ownerAddress - The token owner's address
+   * @param tokenAddress - The token contract address
+   * @param amount - The amount to approve
+   * @returns The transaction receipt
+   */
+  private async approveTokenAllowance(
+    ownerAddress: Address,
+    tokenAddress: Address,
+    amount: bigint,
+    network: EvmSwapsNetwork
+  ) {
+    console.log(
+      `\nApproving token allowance for ${tokenAddress} to spender ${PERMIT2_ADDRESS}`
+    );
+
+    // Encode the approve function call
+    const data = encodeFunctionData({
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [PERMIT2_ADDRESS, amount],
+    });
+
+    // Send the approve transaction
+    const txResult = await this.cdp!.evm.sendTransaction({
+      address: ownerAddress,
+      network: network,
+      transaction: {
+        to: tokenAddress,
+        data,
+        value: BigInt(0),
+      },
+    });
+
+    console.log(`Approval transaction hash: ${txResult.transactionHash}`);
+
+    // Wait for approval transaction to be confirmed
+    const receipt = await this.publicClient.waitForTransactionReceipt({
+      hash: txResult.transactionHash,
+    });
+
+    console.log(`Approval confirmed in block ${receipt.blockNumber} ✅`);
+    return receipt;
+  }
+
+  /**
+   * Check token allowance for the Permit2 contract
+   * @param owner - The token owner's address
+   * @param token - The token contract address
+   * @returns The current allowance
+   */
+  private async getAllowance(
+    owner: Address,
+    token: Address
+  ): Promise<bigint> {
+    console.log(
+      `\nChecking allowance for token (${token}) to Permit2 contract...`
+    );
+
+    try {
+      const allowance = await this.publicClient.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [owner, PERMIT2_ADDRESS],
+      });
+
+      console.log(`Current allowance: ${allowance.toString()}`);
+      return allowance;
+    } catch (error) {
+      console.error("Error checking allowance:", error);
+      return BigInt(0);
     }
   }
 
@@ -179,10 +359,12 @@ export class SwapService {
       return {
         success: true,
         data: account,
-        message: `Account ${name} retrieved or created successfully`
+        message: `Account ${name} retrieved or created successfully`,
       };
     } catch (error) {
-      throw new Error(`Failed to get or create account: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to get or create account: ${(error as Error).message}`
+      );
     }
   }
 
@@ -192,25 +374,25 @@ export class SwapService {
    */
   getCommonTokens(network: EvmSwapsNetwork | "base-sepolia") {
     const tokens: Record<string, Record<string, string>> = {
-      "base": {
-        "ETH": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
-        "WETH": "0x4200000000000000000000000000000000000006",
-        "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        "USDT": "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA"
+      base: {
+        ETH: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
+        WETH: "0x4200000000000000000000000000000000000006",
+        USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        USDT: "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
       },
-      "ethereum": {
-        "ETH": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
-        "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-        "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+      ethereum: {
+        ETH: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
+        WETH: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       },
       "base-sepolia": {
-        "ETH": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
-        "WETH": "0x4200000000000000000000000000000000000006",
-        "USDC": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
-      }
+        ETH: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
+        WETH: "0x4200000000000000000000000000000000000006",
+        USDC: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      },
     };
-    
+
     return tokens[network] || {};
   }
 
@@ -223,13 +405,15 @@ export class SwapService {
       const divisor = BigInt(10 ** decimals);
       const wholePart = amountBigInt / divisor;
       const fractionalPart = amountBigInt % divisor;
-      
+
       const fractionalStr = fractionalPart.toString().padStart(decimals, "0");
       const trimmedFractional = fractionalStr.replace(/0+$/, "") || "0";
-      
+
       return `${wholePart.toString()}.${trimmedFractional}`;
     } catch (error) {
-      console.warn(`Failed to format amount ${amount}: ${(error as Error).message}`);
+      console.warn(
+        `Failed to format amount ${amount}: ${(error as Error).message}`
+      );
       return "0.0";
     }
   }
@@ -239,7 +423,7 @@ export class SwapService {
    */
   private calculateExchangeRate(fromAmount: bigint, toAmount: bigint): string {
     if (fromAmount === BigInt(0)) return "0";
-    
+
     // Calculate how much of toToken you get for 1 unit of fromToken
     const rate = Number(toAmount) / Number(fromAmount);
     return rate.toFixed(8);
