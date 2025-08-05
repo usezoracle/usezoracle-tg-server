@@ -92,7 +92,7 @@ export const validateSwapPrice = (
   if (isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
     return res.status(400).json({
       success: false,
-      error: "fromAmount must be a positive number"
+      error: "fromAmount must be a positive number (in wei or smallest token unit)"
     });
   }
 
@@ -141,7 +141,7 @@ export const validateSwapExecution = (
   if (isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
     return res.status(400).json({
       success: false,
-      error: "fromAmount must be a positive number"
+      error: "fromAmount must be a positive number (in wei or smallest token unit)"
     });
   }
 

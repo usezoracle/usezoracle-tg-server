@@ -1,82 +1,122 @@
-import { Router } from "express";
-import { SwapService } from "../services/swapService.js";
-import { validateSwapPrice, validateSwapExecution } from "../middleware/validation.js";
+import express from 'express';
+import { SwapService } from '../services/swapService.js';
 
-const router = Router();
+const router = express.Router();
 const swapService = SwapService.getInstance();
 
-/**
- * @route GET /api/swaps/tokens/:network
- * @description Get list of common token addresses for a specific network
- * @note All swaps include a 5% fee sent to the fee recipient address
- */
-router.get("/tokens/:network", (req, res, next) => {
+// Get swap price
+router.get('/price', async (req, res) => {
   try {
-    const { network } = req.params;
+    const { accountName, fromToken, toToken, fromAmount, network } = req.query;
     
-    if (!["base", "base-sepolia", "ethereum"].includes(network)) {
+    if (!accountName || !fromToken || !toToken || !fromAmount || !network) {
       return res.status(400).json({
         success: false,
-        error: "Invalid network. Supported networks: base, base-sepolia, ethereum"
+        error: 'Missing required parameters: accountName, fromToken, toToken, fromAmount, network'
       });
     }
-    
-    const tokens = swapService.getCommonTokens(network as "base" | "base-sepolia" | "ethereum");
-    
-    res.json({
-      success: true,
-      data: tokens,
-      message: `Token addresses for ${network} network`
-    });
-  } catch (error) {
-    next(error);
-  }
-});
 
-/**
- * @route GET /api/swaps/price
- * @description Get price estimate for a swap (includes 5% fee calculation)
- */
-router.get("/price", validateSwapPrice, async (req, res, next) => {
-  try {
-    const { accountName, fromToken, toToken, fromAmount, network } = req.query as any;
-    
     const result = await swapService.getSwapPrice({
-      accountName,
-      fromToken,
-      toToken,
-      fromAmount,
-      network: network || "base"
+      accountName: accountName as string,
+      fromToken: fromToken as string,
+      toToken: toToken as string,
+      fromAmount: fromAmount as string,
+      network: network as "base" | "ethereum"
     });
-    
+
     res.json(result);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
   }
 });
 
-/**
- * @route POST /api/swaps/execute
- * @description Execute a swap between tokens with a 5% fee
- * @note 5% of the output is sent to the fee recipient address: 0x27cEe32550DcC30De5a23551bAF7de2f3b0b98A0
- */
-router.post("/execute", validateSwapExecution, async (req, res, next) => {
+// Check token allowance
+router.get('/allowance', async (req, res) => {
+  try {
+    const { accountName, tokenAddress, spenderAddress, network } = req.query;
+    
+    if (!accountName || !tokenAddress || !spenderAddress || !network) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: accountName, tokenAddress, spenderAddress, network'
+      });
+    }
+
+    const result = await swapService.checkTokenAllowance({
+      accountName: accountName as string,
+      tokenAddress: tokenAddress as string,
+      spenderAddress: spenderAddress as string,
+      network: network as "base" | "ethereum"
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+// Get approval instructions
+router.get('/approval-instructions', async (req, res) => {
+  try {
+    const { accountName, tokenAddress, amount, network } = req.query;
+    
+    if (!accountName || !tokenAddress || !amount || !network) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: accountName, tokenAddress, amount, network'
+      });
+    }
+
+    const result = await swapService.getApprovalInstructions({
+      accountName: accountName as string,
+      tokenAddress: tokenAddress as string,
+      amount: amount as string,
+      network: network as "base" | "ethereum"
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+// Execute swap
+router.post('/execute', async (req, res) => {
   try {
     const { accountName, fromToken, toToken, fromAmount, slippageBps, network } = req.body;
     
+    if (!accountName || !fromToken || !toToken || !fromAmount || !network) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: accountName, fromToken, toToken, fromAmount, network'
+      });
+    }
+
     const result = await swapService.executeSwap({
       accountName,
       fromToken,
       toToken,
       fromAmount,
       slippageBps,
-      network: network || "base"
+      network: network as "base" | "ethereum"
     });
-    
+
     res.json(result);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
   }
 });
 
-export { router as swapRoutes };
+export default router;

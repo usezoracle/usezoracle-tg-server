@@ -1,0 +1,111 @@
+---
+title: 'Tokens API'
+description: 'API endpoints for retrieving token information'
+---
+
+# Tokens API
+
+The Tokens API allows you to retrieve information about tokens by their contract address.
+
+## Get Token Information
+
+Returns detailed information about a token by its contract address.
+
+<CodeGroup>
+```bash Get Token Info
+curl -X GET "https://usezoracle-telegrambot-production.up.railway.app/api/tokens/0x907bdae00e91544a270694714832410ad8418888?network=base"
+```
+
+```javascript JavaScript
+fetch('https://usezoracle-telegrambot-production.up.railway.app/api/tokens/0x907bdae00e91544a270694714832410ad8418888?network=base')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="contractAddress" type="string" required>
+  Token contract address (must be a valid Ethereum address)
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="network" type="string" required={false}>
+  Network to query (defaults to base)
+  <Expandable title="Supported networks">
+    - base
+    - base-sepolia  
+    - ethereum
+  </Expandable>
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the operation was successful
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="Data object">
+    <ResponseField name="name" type="string">
+      The token name (e.g., "Pepe", "USD Coin")
+    </ResponseField>
+    <ResponseField name="symbol" type="string">
+      The token symbol (e.g., "PEPE", "USDC")
+    </ResponseField>
+    <ResponseField name="decimals" type="number">
+      The number of decimal places for the token
+    </ResponseField>
+    <ResponseField name="contractAddress" type="string">
+      The token contract address
+    </ResponseField>
+    <ResponseField name="network" type="string">
+      The network where the token exists
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable message about the operation
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "message": "Token information retrieved successfully",
+  "data": {
+    "name": "Pepe",
+    "symbol": "PEPE",
+    "decimals": 18,
+    "contractAddress": "0x907bdae00e91544a270694714832410ad8418888",
+    "network": "base"
+  }
+}
+```
+</ResponseExample>
+
+## Special Token Addresses
+
+The API recognizes special addresses for native tokens:
+
+- **ETH**: `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`
+- **USDC on Base**: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+
+## Error Handling
+
+If the contract address is invalid or there's an issue retrieving token information, the API returns an error response:
+
+<ResponseExample>
+```json Error Response
+{
+  "success": false,
+  "error": "Invalid contract address format"
+}
+```
+</ResponseExample>
+
+### Common Error Codes
+- `400` - Bad Request (invalid contract address or network)
+- `500` - Internal server error 

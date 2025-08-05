@@ -9,7 +9,8 @@ import { accountRoutes } from "./routes/accountRoutes.js";
 import { transactionRoutes } from "./routes/transactionRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { balanceRoutes } from "./routes/balanceRoutes.js";
-import { swapRoutes } from "./routes/swapRoutes.js";
+import swapRoutes from "./routes/swapRoutes.js";
+import { tokenRoutes } from "./routes/tokenRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -46,6 +47,7 @@ app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/balances", balanceRoutes);
 app.use("/api/swaps", swapRoutes);
+app.use("/api/tokens", tokenRoutes);
 
 // Error handling
 app.use(errorHandler);

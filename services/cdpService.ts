@@ -27,10 +27,15 @@ const initializeClient = () => {
   }
 
   if (!publicClient) {
+    // Use Ankr RPC endpoint for Base network to avoid rate limiting
+    const ankrRpcUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
+    
     publicClient = createPublicClient({
       chain: base,
-      transport: http(),
+      transport: http(ankrRpcUrl),
     });
+    
+    console.log('✅ Public client initialized with Ankr RPC endpoint');
   }
   return { cdp, publicClient };
 };
@@ -249,6 +254,29 @@ export class CdpService {
       };
     } catch (error) {
       throw new Error(`Failed to get balances: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Get token information by contract address
+   */
+  async getTokenInfo(contractAddress: `0x${string}`, network: "base" | "base-sepolia" | "ethereum" = "base") {
+    try {
+      const metadata = await this.fetchTokenMetadata(contractAddress);
+      
+      return {
+        success: true,
+        data: {
+          name: metadata.name,
+          symbol: metadata.symbol,
+          decimals: metadata.decimals,
+          contractAddress: contractAddress,
+          network: network
+        },
+        message: "Token information retrieved successfully"
+      };
+    } catch (error) {
+      throw new Error(`Failed to get token info: ${(error as Error).message}`);
     }
   }
 
