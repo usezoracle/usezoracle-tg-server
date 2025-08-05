@@ -32,7 +32,7 @@ const initializeClient = () => {
     
     publicClient = createPublicClient({
       chain: base,
-      transport: http(ankrRpcUrl),
+      transport: http("https://base-mainnet.g.alchemy.com/v2/dnbpgJAxbCT9dbs-cHKAXVSYLNYDrt_n"),
     });
     
     console.log('✅ Public client initialized with Ankr RPC endpoint');
@@ -502,31 +502,76 @@ export class CdpService {
     try {
       const { publicClient } = initializeClient();
 
-      // Use readContract method which is more reliable
-      const [name, symbol, decimals] = await Promise.all([
-        publicClient.readContract({
-          address: contractAddress,
-          abi: erc20Abi,
-          functionName: "name",
-        }) as Promise<string>,
-        publicClient.readContract({
-          address: contractAddress,
-          abi: erc20Abi,
-          functionName: "symbol",
-        }) as Promise<string>,
-        publicClient.readContract({
-          address: contractAddress,
-          abi: erc20Abi,
-          functionName: "decimals",
-        }) as Promise<number>,
-      ]);
+      console.log(`Fetching metadata for token: ${contractAddress}`);
+
+      // Try to fetch metadata with individual calls and better error handling
+      let name = "Unknown Token";
+      let symbol = "UNKNOWN";
+      let decimals = 18;
+
+      // Try to get token info from a known token list first
+      const knownToken = this.getKnownTokenInfo(contractAddress);
+      if (knownToken) {
+        console.log(`Found known token: ${knownToken.name} (${knownToken.symbol})`);
+        tokenCache.set(contractAddress, knownToken);
+        return knownToken;
+      }
+
+      try {
+        name = await Promise.race([
+          publicClient.readContract({
+            address: contractAddress,
+            abi: erc20Abi,
+            functionName: "name",
+          }) as Promise<string>,
+          new Promise<string>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+          )
+        ]);
+        console.log(`Token name: ${name}`);
+      } catch (nameError) {
+        console.warn(`Failed to fetch name for ${contractAddress}:`, (nameError as Error).message);
+      }
+
+      try {
+        symbol = await Promise.race([
+          publicClient.readContract({
+            address: contractAddress,
+            abi: erc20Abi,
+            functionName: "symbol",
+          }) as Promise<string>,
+          new Promise<string>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+          )
+        ]);
+        console.log(`Token symbol: ${symbol}`);
+      } catch (symbolError) {
+        console.warn(`Failed to fetch symbol for ${contractAddress}:`, (symbolError as Error).message);
+      }
+
+      try {
+        decimals = Number(await Promise.race([
+          publicClient.readContract({
+            address: contractAddress,
+            abi: erc20Abi,
+            functionName: "decimals",
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+          )
+        ]));
+        console.log(`Token decimals: ${decimals}`);
+      } catch (decimalsError) {
+        console.warn(`Failed to fetch decimals for ${contractAddress}:`, (decimalsError as Error).message);
+      }
 
       const metadata: TokenMetadata = {
-        name,
-        symbol,
-        decimals: Number(decimals),
+        name: name || "Unknown Token",
+        symbol: symbol || "UNKNOWN",
+        decimals: decimals || 18,
       };
 
+      console.log(`Final metadata for ${contractAddress}:`, metadata);
       tokenCache.set(contractAddress, metadata);
       return metadata;
     } catch (error) {
@@ -544,6 +589,44 @@ export class CdpService {
       return fallback;
     }
   }
+  private getKnownTokenInfo(contractAddress: string): TokenMetadata | null {
+    // Known token addresses for Base network
+    const knownTokens: Record<string, TokenMetadata> = {
+      "0x4200000000000000000000000000000000000006": {
+        name: "Wrapped Ether",
+        symbol: "WETH",
+        decimals: 18,
+      },
+      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913": {
+        name: "USD Coin",
+        symbol: "USDC",
+        decimals: 6,
+      },
+      "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA": {
+        name: "Tether USD",
+        symbol: "USDT",
+        decimals: 6,
+      },
+      "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb": {
+        name: "Dai Stablecoin",
+        symbol: "DAI",
+        decimals: 18,
+      },
+      "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22": {
+        name: "Coinbase Wrapped Staked ETH",
+        symbol: "cbETH",
+        decimals: 18,
+      },
+      "0x19830739b089e6c310822bc67eeba9f79be8ae70": {
+        name: "WFOLAJINDAYOETH",
+        symbol: "WFOLAJINDAYOETH",
+        decimals: 18,
+      },
+    };
+
+    return knownTokens[contractAddress.toLowerCase()] || null;
+  }
+
   private formatAmount(amount: string, decimals: number): string {
     try {
       const divisor = BigInt(10 ** decimals);
