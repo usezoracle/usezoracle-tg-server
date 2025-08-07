@@ -8,7 +8,8 @@
     "dev": "tsx watch server.ts",
     "build": "tsc && node copy-static-assets.js",
     "postinstall": "npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node test-monitoring.js",
+    "test:monitoring": "node test-monitoring.js",
     "docs:dev": "npx mintlify dev",
     "docs:serve": "node serve-docs.js"
   },
@@ -20,10 +21,13 @@
     "node": ">=19.0.0"
   },
   "dependencies": {
+    "@ankr.com/ankr.js": "^0.6.0",
     "@coinbase/cdp-sdk": "^1.31.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
+    "ethers": "^6.11.1",
     "express": "^5.1.0",
+    "node-fetch": "^3.3.2",
     "swagger-ui-express": "^5.0.1",
     "viem": "^2.33.1",
     "yamljs": "^0.3.0"

@@ -505,6 +505,1250 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/monitoring/deposits:
+    post:
+      summary: Monitor wallet for incoming deposits
+      description: Monitors a wallet address for incoming ETH and ERC-20 token deposit transactions on Base network. Detects both direct ETH transfers and ERC-20 token transfers (Transfer events) in the last 1000 blocks (~2-3 hours).
+      tags:
+        - Monitoring
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/monitoring/deposits" \
+              -H "Content-Type: application/json" \
+              -d '{"walletAddress":"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"}'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - walletAddress
+              properties:
+                walletAddress:
+                  type: string
+                  description: The wallet address to monitor for deposits
+                  pattern: "^0x[a-fA-F0-9]{40}$"
+                  example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+                fromBlock:
+                  type: number
+                  description: Starting block number (optional, defaults to last 1000 blocks)
+                  example: 33800000
+      responses:
+        "200":
+          description: Deposit events found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepositMonitoringResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/copy-trading:
+    post:
+      summary: Monitor a wallet for copy trading opportunities
+      description: Monitors a wallet address for trading activities that can be copied
+      tags:
+        - Monitoring
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/monitoring/copy-trading" \
+              -H "Content-Type: application/json" \
+              -d '{"walletAddress":"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"}'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - walletAddress
+              properties:
+                walletAddress:
+                  type: string
+                  description: The wallet address to monitor for trading activities
+                  pattern: "^0x[a-fA-F0-9]{40}$"
+                  example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+      responses:
+        "200":
+          description: Copy trading events found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopyTradingResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/balance/{address}:
+    get:
+      summary: Get wallet balance
+      description: Retrieves the ETH balance for a wallet address
+      tags:
+        - Monitoring
+      parameters:
+        - in: path
+          name: address
+          required: true
+          schema:
+            type: string
+            pattern: "^0x[a-fA-F0-9]{40}$"
+          description: The wallet address to get balance for
+          example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/monitoring/balance/0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+      responses:
+        "200":
+          description: Wallet balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/token-balance:
+    post:
+      summary: Get token balance for a wallet
+      description: Retrieves the balance of a specific token for a wallet address
+      tags:
+        - Monitoring
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/monitoring/token-balance" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "tokenAddress": "0x4200000000000000000000000000000000000006",
+                "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+              }'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tokenAddress
+                - walletAddress
+              properties:
+                tokenAddress:
+                  type: string
+                  description: The token contract address
+                  pattern: "^0x[a-fA-F0-9]{40}$"
+                  example: "0x4200000000000000000000000000000000000006"
+                walletAddress:
+                  type: string
+                  description: The wallet address to check balance for
+                  pattern: "^0x[a-fA-F0-9]{40}$"
+                  example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+      responses:
+        "200":
+          description: Token balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenBalanceResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/recent-transactions/{address}:
+    get:
+      summary: Get recent transactions for a wallet
+      description: Retrieves recent transactions for a wallet address
+      tags:
+        - Monitoring
+      parameters:
+        - in: path
+          name: address
+          required: true
+          schema:
+            type: string
+            pattern: "^0x[a-fA-F0-9]{40}$"
+          description: The wallet address to get transactions for
+          example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        - in: query
+          name: limit
+          schema:
+            type: number
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Number of recent transactions to retrieve
+          example: 10
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/monitoring/recent-transactions/0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6?limit=10"
+      responses:
+        "200":
+          description: Recent transactions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecentTransactionsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/check-limit-orders:
+    post:
+      summary: Check and trigger pending limit orders
+      description: Check all pending limit orders and trigger them if price conditions are met. This should be called periodically to monitor limit orders.
+      tags:
+        - Monitoring
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/monitoring/check-limit-orders"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/monitoring/check-limit-orders', {
+              method: 'POST'
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Limit orders checked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Position"
+                    description: Array of triggered positions
+                  message:
+                    type: string
+                    example: "Checked limit orders: 2 orders triggered"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/snipe:
+    post:
+      summary: Snipe a token - execute a trade as fast as possible
+      description: Executes a fast token purchase using secure CDP account management (no private keys required)
+      tags:
+        - Snipe
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/snipe" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "accountName": "my-snipe-account",
+                "tokenAddress": "0x4200000000000000000000000000000000000006",
+                "amount": "0.1",
+                "slippage": 0.05
+              }'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - tokenAddress
+                - amount
+              properties:
+                accountName:
+                  type: string
+                  description: The CDP account name to use for the snipe
+                  pattern: "^[a-zA-Z0-9-]+$"
+                  example: "my-snipe-account"
+                tokenAddress:
+                  type: string
+                  description: The token contract address to snipe
+                  pattern: "^0x[a-fA-F0-9]{40}$"
+                  example: "0x4200000000000000000000000000000000000006"
+                amount:
+                  type: string
+                  description: Amount of ETH to spend on the token
+                  example: "0.1"
+                slippage:
+                  type: number
+                  description: Slippage tolerance (default 0.05 for 5%)
+                  minimum: 0
+                  maximum: 1
+                  example: 0.05
+      responses:
+        "200":
+          description: Snipe transaction executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SnipeResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/positions:
+    get:
+      summary: Get all positions with filtering options
+      description: Retrieve all positions (open, closed, pending) with optional filtering by account name and status
+      tags:
+        - Positions
+      parameters:
+        - in: query
+          name: accountName
+          schema:
+            type: string
+          description: Filter positions by account name
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [open, closed, pending]
+          description: Filter positions by status
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/positions"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/positions')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Positions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PositionsResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/positions/{positionId}:
+    get:
+      summary: Get a specific position by ID
+      description: Retrieve detailed information about a specific position
+      tags:
+        - Positions
+      parameters:
+        - in: path
+          name: positionId
+          required: true
+          schema:
+            type: string
+          description: The position ID
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/positions/position-id-123"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/positions/position-id-123')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Position retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+        "404":
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/positions/account/{accountName}:
+    get:
+      summary: Get positions by account name
+      description: Retrieve all positions for a specific account
+      tags:
+        - Positions
+      parameters:
+        - in: path
+          name: accountName
+          required: true
+          schema:
+            type: string
+          description: The account name
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/positions/account/Bright"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/positions/account/Bright')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Positions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PositionsResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/positions/status/{status}:
+    get:
+      summary: Get positions by status
+      description: Retrieve all positions with a specific status (open, closed, pending)
+      tags:
+        - Positions
+      parameters:
+        - in: path
+          name: status
+          required: true
+          schema:
+            type: string
+            enum: [open, closed, pending]
+          description: The position status to filter by
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/positions/status/open"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/positions/status/open')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Positions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Position"
+        "400":
+          description: Invalid status parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/positions/{positionId}/close:
+    post:
+      summary: Close a position
+      description: Close an open position and calculate PnL
+      tags:
+        - Positions
+      parameters:
+        - in: path
+          name: positionId
+          required: true
+          schema:
+            type: string
+          description: The position ID to close
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - exitTransactionHash
+              properties:
+                exitTransactionHash:
+                  type: string
+                  description: The transaction hash of the exit transaction
+                  example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/positions/position-id-123/close" \
+              -H "Content-Type: application/json" \
+              -d '{"exitTransactionHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"}'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/positions/position-id-123/close', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                exitTransactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Position closed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+        "404":
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Position is not open
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/positions/{positionId}/pending:
+    post:
+      summary: Set position to pending
+      description: Set a position to pending status when creating a limit order that hasn't been triggered yet. This is used for orders that are waiting for the market to reach a specific price (e.g., limit buy/sell orders).
+      tags:
+        - Positions
+      parameters:
+        - in: path
+          name: positionId
+          required: true
+          schema:
+            type: string
+          description: The position ID to set to pending
+      x-code-samples:
+        - lang: curl
+          source: |
+            # Set a limit buy order to pending (waiting for price to drop)
+            curl -X POST "http://localhost:3000/api/positions/Bright-WETH-limit-buy-1703123456789/pending"
+        - lang: javascript
+          source: |
+            // Set a limit sell order to pending (waiting for price to rise)
+            fetch('http://localhost:3000/api/positions/Bright-WETH-limit-sell-1703123456789/pending', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Position set to pending successfully (limit order waiting to be triggered)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+        "404":
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/positions/limit-order:
+    post:
+      summary: Create a limit order
+      description: Create a limit order that will trigger when the token reaches a specific price. The order will be set to pending status until the price condition is met.
+      tags:
+        - Positions
+      x-code-samples:
+        - lang: curl
+          source: |
+            # Create a limit buy order (buy when price drops to $2500)
+            curl -X POST "http://localhost:3000/api/positions/limit-order" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "accountName": "Bright",
+                "tokenAddress": "0x4200000000000000000000000000000000000006",
+                "orderType": "buy",
+                "targetPrice": "2500.00",
+                "amount": "0.1",
+                "slippage": "0.5"
+              }'
+        - lang: javascript
+          source: |
+            // Create a limit sell order (sell when price rises to $2700)
+            fetch('http://localhost:3000/api/positions/limit-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accountName: 'Bright',
+                tokenAddress: '0x4200000000000000000000000000000000000006',
+                orderType: 'sell',
+                targetPrice: '2700.00',
+                amount: '0.1',
+                slippage: '0.5'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - tokenAddress
+                - orderType
+                - targetPrice
+                - amount
+              properties:
+                accountName:
+                  type: string
+                  description: The account name to create the limit order for
+                  example: "Bright"
+                tokenAddress:
+                  type: string
+                  description: The token contract address
+                  example: "0x4200000000000000000000000000000000000006"
+                orderType:
+                  type: string
+                  enum: [buy, sell]
+                  description: Type of limit order (buy or sell)
+                  example: "buy"
+                targetPrice:
+                  type: string
+                  description: The target price at which the order should trigger
+                  example: "2500.00"
+                amount:
+                  type: string
+                  description: The amount of tokens to buy/sell
+                  example: "0.1"
+                slippage:
+                  type: string
+                  description: Maximum allowed slippage percentage (optional)
+                  example: "0.5"
+      responses:
+        "200":
+          description: Limit order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+        "400":
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/alerts:
+    get:
+      summary: Get all alerts with filtering options
+      description: Retrieve all alerts (price, portfolio, trade, market, copy trading) with optional filtering
+      tags:
+        - Alerts
+      parameters:
+        - in: query
+          name: accountName
+          schema:
+            type: string
+          description: Filter alerts by account name
+        - in: query
+          name: alertType
+          schema:
+            type: string
+            enum: [price, portfolio, trade, market, copy]
+          description: Filter alerts by type
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/alerts"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/alerts')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Alerts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/alerts/price:
+    post:
+      summary: Create a price alert
+      description: Create an alert that triggers when a token reaches a certain price
+      tags:
+        - Alerts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/alerts/price" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "accountName": "Bright",
+                "tokenAddress": "0x4200000000000000000000000000000000000006",
+                "targetPrice": "2500.00",
+                "condition": "above"
+              }'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/alerts/price', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accountName: 'Bright',
+                tokenAddress: '0x4200000000000000000000000000000000000006',
+                targetPrice: '2500.00',
+                condition: 'above'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - tokenAddress
+                - targetPrice
+                - condition
+              properties:
+                accountName:
+                  type: string
+                  description: The account name
+                  example: "Bright"
+                tokenAddress:
+                  type: string
+                  description: The token contract address
+                  example: "0x4200000000000000000000000000000000000006"
+                targetPrice:
+                  type: string
+                  description: The target price to trigger the alert
+                  example: "2500.00"
+                condition:
+                  type: string
+                  enum: [above, below]
+                  description: Whether to trigger above or below the target price
+                  example: "above"
+      responses:
+        "200":
+          description: Price alert created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/alerts/portfolio:
+    post:
+      summary: Create a portfolio alert
+      description: Create an alert that triggers when portfolio value changes significantly
+      tags:
+        - Alerts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/alerts/portfolio" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "accountName": "Bright",
+                "alertType": "value_increase",
+                "threshold": "1000.00",
+                "condition": "above"
+              }'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/alerts/portfolio', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accountName: 'Bright',
+                alertType: 'value_increase',
+                threshold: '1000.00',
+                condition: 'above'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - alertType
+                - threshold
+                - condition
+              properties:
+                accountName:
+                  type: string
+                  description: The account name
+                  example: "Bright"
+                alertType:
+                  type: string
+                  enum: [value_increase, value_decrease, pnl_threshold]
+                  description: Type of portfolio alert
+                  example: "value_increase"
+                threshold:
+                  type: string
+                  description: The threshold value to trigger the alert
+                  example: "1000.00"
+                condition:
+                  type: string
+                  enum: [above, below]
+                  description: Whether to trigger above or below the threshold
+                  example: "above"
+      responses:
+        "200":
+          description: Portfolio alert created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/alerts/trade:
+    post:
+      summary: Create a trade alert
+      description: Create an alert for trade-related events
+      tags:
+        - Alerts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/alerts/trade" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "accountName": "Bright",
+                "alertType": "large_trade",
+                "tokenAddress": "0x4200000000000000000000000000000000000006",
+                "amount": "0.5"
+              }'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/alerts/trade', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accountName: 'Bright',
+                alertType: 'large_trade',
+                tokenAddress: '0x4200000000000000000000000000000000000006',
+                amount: '0.5'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - alertType
+              properties:
+                accountName:
+                  type: string
+                  description: The account name
+                  example: "Bright"
+                alertType:
+                  type: string
+                  enum: [successful_trade, failed_transaction, large_trade]
+                  description: Type of trade alert
+                  example: "large_trade"
+                tokenAddress:
+                  type: string
+                  description: The token contract address (optional)
+                  example: "0x4200000000000000000000000000000000000006"
+                amount:
+                  type: string
+                  description: The trade amount (optional)
+                  example: "0.5"
+      responses:
+        "200":
+          description: Trade alert created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/alerts/market:
+    post:
+      summary: Create a market alert
+      description: Create an alert for market-related events
+      tags:
+        - Alerts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/alerts/market" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "alertType": "price_spike",
+                "threshold": "100.00",
+                "condition": "above",
+                "tokenAddress": "0x4200000000000000000000000000000000000006"
+              }'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/alerts/market', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                alertType: 'price_spike',
+                threshold: '100.00',
+                condition: 'above',
+                tokenAddress: '0x4200000000000000000000000000000000000006'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - alertType
+                - threshold
+                - condition
+              properties:
+                alertType:
+                  type: string
+                  enum: [price_spike, volume_surge, market_opportunity]
+                  description: Type of market alert
+                  example: "price_spike"
+                threshold:
+                  type: string
+                  description: The threshold value to trigger the alert
+                  example: "100.00"
+                condition:
+                  type: string
+                  enum: [above, below]
+                  description: Whether to trigger above or below the threshold
+                  example: "above"
+                tokenAddress:
+                  type: string
+                  description: The token contract address (optional)
+                  example: "0x4200000000000000000000000000000000000006"
+      responses:
+        "200":
+          description: Market alert created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/alerts/copy-trading:
+    post:
+      summary: Create a copy trading alert
+      description: Create an alert for copy trading activities
+      tags:
+        - Alerts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/alerts/copy-trading" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "accountName": "Bright",
+                "alertType": "wallet_activity",
+                "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+                "tokenAddress": "0x4200000000000000000000000000000000000006",
+                "amount": "0.1"
+              }'
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/alerts/copy-trading', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accountName: 'Bright',
+                alertType: 'wallet_activity',
+                walletAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+                tokenAddress: '0x4200000000000000000000000000000000000006',
+                amount: '0.1'
+              })
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountName
+                - alertType
+                - walletAddress
+              properties:
+                accountName:
+                  type: string
+                  description: The account name
+                  example: "Bright"
+                alertType:
+                  type: string
+                  enum: [wallet_activity, large_transaction, new_token_purchase]
+                  description: Type of copy trading alert
+                  example: "wallet_activity"
+                walletAddress:
+                  type: string
+                  description: The wallet address to monitor
+                  example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+                tokenAddress:
+                  type: string
+                  description: The token contract address (optional)
+                  example: "0x4200000000000000000000000000000000000006"
+                amount:
+                  type: string
+                  description: The transaction amount (optional)
+                  example: "0.1"
+      responses:
+        "200":
+          description: Copy trading alert created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/alerts/{alertId}:
+    delete:
+      summary: Delete an alert
+      description: Delete a specific alert by ID
+      tags:
+        - Alerts
+      parameters:
+        - in: path
+          name: alertId
+          required: true
+          schema:
+            type: string
+          description: The alert ID to delete
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X DELETE "http://localhost:3000/api/alerts/price-Bright-0x4200000000000000000000000000000000000006-1703123456789"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/alerts/price-Bright-0x4200000000000000000000000000000000000006-1703123456789', {
+              method: 'DELETE'
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Alert deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "404":
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/alerts/check:
+    post:
+      summary: Check and trigger alerts
+      description: Manually check and trigger all active alerts
+      tags:
+        - Alerts
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/alerts/check"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/alerts/check', {
+              method: 'POST'
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Alerts checked successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     ApiResponse:
@@ -735,9 +1979,571 @@ components:
               description: URL to view the transaction on the blockchain explorer
               example: "https://basescan.org/tx/0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-KEY
-      description: Optional API key authentication (if implemented)
+    DepositMonitoringResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Found 3 deposit events for wallet 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              from:
+                type: string
+                description: Address that sent the deposit
+                example: "0x1234567890123456789012345678901234567890"
+              to:
+                type: string
+                description: Address that received the deposit
+                example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+              value:
+                type: string
+                description: Amount deposited (in wei for ETH, raw amount for ERC-20 tokens)
+                example: "1000000000000000000"
+              transactionHash:
+                type: string
+                description: Hash of the deposit transaction
+                example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+              blockNumber:
+                type: number
+                description: Block number where the transaction was confirmed
+                example: 33806419
+              timestamp:
+                type: number
+                description: Timestamp of the block
+                example: 1703123456
+              isERC20:
+                type: boolean
+                description: Whether this is an ERC-20 token transfer (true) or ETH transfer (false)
+                example: true
+              tokenAddress:
+                type: string
+                description: ERC-20 token contract address (only present for ERC-20 transfers)
+                example: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+              tokenSymbol:
+                type: string
+                description: ERC-20 token symbol (only present for ERC-20 transfers)
+                example: "USDC"
+              tokenName:
+                type: string
+                description: ERC-20 token name (only present for ERC-20 transfers)
+                example: "USD Coin"
+              tokenDecimals:
+                type: number
+                description: ERC-20 token decimals (only present for ERC-20 transfers)
+                example: 6
+
+    CopyTradingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Found 2 copy trading events for wallet 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              walletAddress:
+                type: string
+                description: Address of the monitored wallet
+                example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+              transactionHash:
+                type: string
+                description: Hash of the trading transaction
+                example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+              method:
+                type: string
+                description: Method called in the transaction
+                example: "swapExactETHForTokens"
+              params:
+                type: object
+                description: Parameters of the transaction
+                properties:
+                  rawData:
+                    type: string
+                    description: Raw transaction data
+                    example: "0000000000000000000000000000000000000000000000000000000000000000"
+                  methodId:
+                    type: string
+                    description: Method ID of the transaction
+                    example: "0x7ff36ab5"
+              timestamp:
+                type: number
+                description: Timestamp of the block
+                example: 1703123456
+
+    SnipeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Successfully sniped token 0x4200000000000000000000000000000000000006"
+        data:
+          type: object
+          properties:
+            tokenAddress:
+              type: string
+              description: Address of the token that was sniped
+              example: "0x4200000000000000000000000000000000000006"
+            amount:
+              type: string
+              description: Amount of ETH spent on the token
+              example: "0.1"
+            transactionHash:
+              type: string
+              description: Hash of the snipe transaction
+              example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            timestamp:
+              type: number
+              description: Timestamp when the snipe was executed
+              example: 1703123456
+
+    TokenBalanceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Token balance retrieved for wallet 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        data:
+          type: object
+          properties:
+            tokenAddress:
+              type: string
+              description: Address of the token
+              example: "0x4200000000000000000000000000000000000006"
+            walletAddress:
+              type: string
+              description: Address of the wallet
+              example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+            balance:
+              type: string
+              description: Token balance for the wallet
+              example: "100.5"
+
+    RecentTransactionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Retrieved 10 recent transactions for wallet 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        data:
+          type: array
+          items:
+            type: object
+            description: Transaction object
+            additionalProperties: true
+
+    Position:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the position
+          example: "Bright-0x4200000000000000000000000000000000000006-1703123456789"
+        accountName:
+          type: string
+          description: Name of the account that owns this position
+          example: "Bright"
+        tokenAddress:
+          type: string
+          description: Address of the token
+          example: "0x4200000000000000000000000000000000000006"
+        tokenSymbol:
+          type: string
+          description: Symbol of the token
+          example: "WETH"
+        tokenName:
+          type: string
+          description: Name of the token
+          example: "Wrapped Ether"
+        amount:
+          type: string
+          description: Amount of ETH spent on the position
+          example: "0.1"
+        entryPrice:
+          type: string
+          description: Price when the position was opened
+          example: "2500.123456"
+        currentPrice:
+          type: string
+          description: Current price of the token (for open positions)
+          example: "2550.654321"
+        pnl:
+          type: string
+          description: Profit and loss in ETH
+          example: "0.002"
+        pnlPercentage:
+          type: number
+          description: Profit and loss percentage
+          example: 2.5
+        status:
+          type: string
+          enum: [open, closed, pending]
+          description: Current status of the position (open=active trade, closed=completed trade, pending=limit order waiting to be triggered)
+          example: "open"
+        transactionHash:
+          type: string
+          description: Hash of the entry transaction
+          example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        timestamp:
+          type: number
+          description: Timestamp when the position was opened
+          example: 1703123456
+        closedAt:
+          type: number
+          description: Timestamp when the position was closed (for closed positions)
+          example: 1703124000
+        exitTransactionHash:
+          type: string
+          description: Hash of the exit transaction (for closed positions)
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+
+    PositionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Successfully retrieved 5 positions"
+        data:
+          type: object
+          properties:
+            open:
+              type: array
+              items:
+                $ref: "#/components/schemas/Position"
+              description: List of open positions
+            closed:
+              type: array
+              items:
+                $ref: "#/components/schemas/Position"
+              description: List of closed positions
+            pending:
+              type: array
+              items:
+                $ref: "#/components/schemas/Position"
+              description: List of pending positions (limit orders waiting to be triggered)
+            summary:
+              type: object
+              properties:
+                totalOpen:
+                  type: number
+                  description: Total number of open positions
+                  example: 3
+                totalClosed:
+                  type: number
+                  description: Total number of closed positions
+                  example: 10
+                totalPending:
+                  type: number
+                  description: Total number of pending positions (limit orders)
+                  example: 1
+                totalPnl:
+                  type: string
+                  description: Total profit and loss from closed positions
+                  example: "0.025"
+                totalPnlPercentage:
+                  type: number
+                  description: Average profit and loss percentage from closed positions
+                  example: 5.2
+
+    AlertResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Successfully retrieved alerts (3 active)"
+        data:
+          type: object
+          properties:
+            priceAlerts:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Unique identifier for the alert
+                    example: "price-Bright-0x4200000000000000000000000000000000000006-1703123456789"
+                  accountName:
+                    type: string
+                    description: Name of the account that owns this alert
+                    example: "Bright"
+                  tokenAddress:
+                    type: string
+                    description: Address of the token
+                    example: "0x4200000000000000000000000000000000000006"
+                  tokenSymbol:
+                    type: string
+                    description: Symbol of the token
+                    example: "WETH"
+                  tokenName:
+                    type: string
+                    description: Name of the token
+                    example: "Wrapped Ether"
+                  targetPrice:
+                    type: string
+                    description: Target price to trigger the alert
+                    example: "2500.00"
+                  condition:
+                    type: string
+                    enum: [above, below]
+                    description: Whether to trigger above or below the target price
+                    example: "above"
+                  isActive:
+                    type: boolean
+                    description: Whether the alert is currently active
+                    example: true
+                  createdAt:
+                    type: number
+                    description: Timestamp when the alert was created
+                    example: 1703123456
+                  triggeredAt:
+                    type: number
+                    description: Timestamp when the alert was triggered (if triggered)
+                    example: 1703124000
+                  triggeredPrice:
+                    type: string
+                    description: Price when the alert was triggered
+                    example: "2550.00"
+              description: List of price alerts
+            portfolioAlerts:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Unique identifier for the alert
+                    example: "portfolio-Bright-value_increase-1703123456789"
+                  accountName:
+                    type: string
+                    description: Name of the account that owns this alert
+                    example: "Bright"
+                  alertType:
+                    type: string
+                    enum: [value_increase, value_decrease, pnl_threshold]
+                    description: Type of portfolio alert
+                    example: "value_increase"
+                  threshold:
+                    type: string
+                    description: Threshold value to trigger the alert
+                    example: "1000.00"
+                  condition:
+                    type: string
+                    enum: [above, below]
+                    description: Whether to trigger above or below the threshold
+                    example: "above"
+                  isActive:
+                    type: boolean
+                    description: Whether the alert is currently active
+                    example: true
+                  createdAt:
+                    type: number
+                    description: Timestamp when the alert was created
+                    example: 1703123456
+                  triggeredAt:
+                    type: number
+                    description: Timestamp when the alert was triggered (if triggered)
+                    example: 1703124000
+                  triggeredValue:
+                    type: string
+                    description: Value when the alert was triggered
+                    example: "1100.00"
+              description: List of portfolio alerts
+            tradeAlerts:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Unique identifier for the alert
+                    example: "trade-Bright-large_trade-1703123456789"
+                  accountName:
+                    type: string
+                    description: Name of the account that owns this alert
+                    example: "Bright"
+                  alertType:
+                    type: string
+                    enum: [successful_trade, failed_transaction, large_trade]
+                    description: Type of trade alert
+                    example: "large_trade"
+                  tokenAddress:
+                    type: string
+                    description: Address of the token (optional)
+                    example: "0x4200000000000000000000000000000000000006"
+                  tokenSymbol:
+                    type: string
+                    description: Symbol of the token (optional)
+                    example: "WETH"
+                  amount:
+                    type: string
+                    description: Trade amount (optional)
+                    example: "0.5"
+                  transactionHash:
+                    type: string
+                    description: Hash of the transaction (optional)
+                    example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+                  isActive:
+                    type: boolean
+                    description: Whether the alert is currently active
+                    example: true
+                  createdAt:
+                    type: number
+                    description: Timestamp when the alert was created
+                    example: 1703123456
+                  triggeredAt:
+                    type: number
+                    description: Timestamp when the alert was triggered (if triggered)
+                    example: 1703124000
+              description: List of trade alerts
+            marketAlerts:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Unique identifier for the alert
+                    example: "market-price_spike-1703123456789"
+                  alertType:
+                    type: string
+                    enum: [price_spike, volume_surge, market_opportunity]
+                    description: Type of market alert
+                    example: "price_spike"
+                  tokenAddress:
+                    type: string
+                    description: Address of the token (optional)
+                    example: "0x4200000000000000000000000000000000000006"
+                  tokenSymbol:
+                    type: string
+                    description: Symbol of the token (optional)
+                    example: "WETH"
+                  threshold:
+                    type: string
+                    description: Threshold value to trigger the alert
+                    example: "100.00"
+                  condition:
+                    type: string
+                    enum: [above, below]
+                    description: Whether to trigger above or below the threshold
+                    example: "above"
+                  isActive:
+                    type: boolean
+                    description: Whether the alert is currently active
+                    example: true
+                  createdAt:
+                    type: number
+                    description: Timestamp when the alert was created
+                    example: 1703123456
+                  triggeredAt:
+                    type: number
+                    description: Timestamp when the alert was triggered (if triggered)
+                    example: 1703124000
+                  triggeredValue:
+                    type: string
+                    description: Value when the alert was triggered
+                    example: "150.00"
+              description: List of market alerts
+            copyTradingAlerts:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Unique identifier for the alert
+                    example: "copy-Bright-wallet_activity-1703123456789"
+                  accountName:
+                    type: string
+                    description: Name of the account that owns this alert
+                    example: "Bright"
+                  alertType:
+                    type: string
+                    enum: [wallet_activity, large_transaction, new_token_purchase]
+                    description: Type of copy trading alert
+                    example: "wallet_activity"
+                  walletAddress:
+                    type: string
+                    description: Address of the wallet being monitored
+                    example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+                  tokenAddress:
+                    type: string
+                    description: Address of the token (optional)
+                    example: "0x4200000000000000000000000000000000000006"
+                  tokenSymbol:
+                    type: string
+                    description: Symbol of the token (optional)
+                    example: "WETH"
+                  amount:
+                    type: string
+                    description: Transaction amount (optional)
+                    example: "0.1"
+                  transactionHash:
+                    type: string
+                    description: Hash of the transaction (optional)
+                    example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+                  isActive:
+                    type: boolean
+                    description: Whether the alert is currently active
+                    example: true
+                  createdAt:
+                    type: number
+                    description: Timestamp when the alert was created
+                    example: 1703123456
+                  triggeredAt:
+                    type: number
+                    description: Timestamp when the alert was triggered (if triggered)
+                    example: 1703124000
+              description: List of copy trading alerts
+            summary:
+              type: object
+              properties:
+                totalPriceAlerts:
+                  type: number
+                  description: Total number of price alerts
+                  example: 1
+                totalPortfolioAlerts:
+                  type: number
+                  description: Total number of portfolio alerts
+                  example: 0
+                totalTradeAlerts:
+                  type: number
+                  description: Total number of trade alerts
+                  example: 0
+                totalMarketAlerts:
+                  type: number
+                  description: Total number of market alerts
+                  example: 0
+                totalCopyTradingAlerts:
+                  type: number
+                  description: Total number of copy trading alerts
+                  example: 0
+                activeAlerts:
+                  type: number
+                  description: Total number of active alerts
+                  example: 1

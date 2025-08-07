@@ -55,7 +55,10 @@ router.get("/price", validateSwapPrice, async (req, res, next) => {
 
     res.json(result);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
   }
 });
 
@@ -87,7 +90,248 @@ router.post("/execute", validateSwapExecution, async (req, res, next) => {
 
     res.json(result);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+/**
+ * @route POST /api/swaps/approve
+ * @description Manually approve tokens for the Permit2 contract
+ */
+router.post("/approve", async (req, res, next) => {
+  try {
+    const {
+      accountName,
+      tokenAddress,
+      amount,
+      network,
+    } = req.body;
+
+    if (!accountName || !tokenAddress || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameters: accountName, tokenAddress, amount"
+      });
+    }
+
+    const result = await swapService.approveTokens(
+      accountName,
+      tokenAddress,
+      amount,
+      network || "base"
+    );
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+/**
+ * @route GET /api/swaps/allowance
+ * @description Check current token allowance for an account
+ */
+router.get("/allowance", async (req, res, next) => {
+  try {
+    const {
+      accountName,
+      tokenAddress,
+      network,
+    } = req.query as any;
+
+    if (!accountName || !tokenAddress) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameters: accountName, tokenAddress"
+      });
+    }
+
+    const result = await swapService.checkTokenAllowance(
+      accountName,
+      tokenAddress,
+      network || "base"
+    );
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+/**
+ * @route POST /api/swaps/validate
+ * @description Validate account and balance before swap operations
+ */
+router.post("/validate", async (req, res, next) => {
+  try {
+    const {
+      accountName,
+      fromToken,
+      fromAmount,
+      network,
+    } = req.body;
+
+    if (!accountName || !fromToken || !fromAmount) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameters: accountName, fromToken, fromAmount"
+      });
+    }
+
+    const result = await swapService.validateSwapPrerequisites(
+      accountName,
+      fromToken,
+      fromAmount,
+      network || "base"
+    );
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+/**
+ * @route POST /api/swaps/fund
+ * @description Fund an account with ETH for gas fees
+ */
+router.post("/fund", async (req, res, next) => {
+  try {
+    const {
+      accountName,
+      amount,
+      network,
+    } = req.body;
+
+    if (!accountName || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameters: accountName, amount"
+      });
+    }
+
+    const result = await swapService.fundAccountWithEth(
+      accountName,
+      amount,
+      network || "base"
+    );
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+/**
+ * @route GET /api/swaps/balance
+ * @description Check account ETH balance
+ */
+router.get("/balance", async (req, res, next) => {
+  try {
+    const {
+      accountName,
+      network,
+    } = req.query as any;
+
+    if (!accountName) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameter: accountName"
+      });
+    }
+
+    const result = await swapService.checkAccountEthBalance(
+      accountName,
+      network || "base"
+    );
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+/**
+ * @route GET /api/swaps/max-amount
+ * @description Get maximum available amount for a token
+ */
+router.get("/max-amount", async (req, res, next) => {
+  try {
+    const {
+      accountName,
+      tokenAddress,
+      network,
+    } = req.query as any;
+
+    if (!accountName || !tokenAddress) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameters: accountName, tokenAddress"
+      });
+    }
+
+    const result = await swapService.getMaxAvailableAmount(
+      accountName,
+      tokenAddress,
+      network || "base"
+    );
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
+  }
+});
+
+/**
+ * @route GET /api/swaps/check-approval-support
+ * @description Check if a token supports standard ERC20 approval
+ */
+router.get("/check-approval-support", async (req, res, next) => {
+  try {
+    const {
+      tokenAddress,
+      network,
+    } = req.query as any;
+
+    if (!tokenAddress) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameter: tokenAddress"
+      });
+    }
+
+    const result = await swapService.checkTokenApprovalSupport(
+      tokenAddress,
+      network || "base"
+    );
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message
+    });
   }
 });
 

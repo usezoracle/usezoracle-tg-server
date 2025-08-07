@@ -6,19 +6,36 @@ let cdp: CdpClient;
 let publicClient: any;
 
 const initializeClient = () => {
+  // Debug environment variables
+  console.log('🔍 Debugging CDP Client initialization:');
+  console.log('CDP_API_KEY_ID exists:', !!process.env.CDP_API_KEY_ID);
+  console.log('CDP_API_KEY_SECRET exists:', !!process.env.CDP_API_KEY_SECRET);
+  console.log('CDP_WALLET_SECRET exists:', !!process.env.CDP_WALLET_SECRET);
+  
   if (!cdp) {
-    cdp = new CdpClient({
-      apiKeyId: process.env.CDP_API_KEY_ID,
-      apiKeySecret: process.env.CDP_API_KEY_SECRET,
-      walletSecret: process.env.CDP_WALLET_SECRET,
-    });
+    try {
+      cdp = new CdpClient({
+        apiKeyId: process.env.CDP_API_KEY_ID!,
+        apiKeySecret: process.env.CDP_API_KEY_SECRET!,
+        walletSecret: process.env.CDP_WALLET_SECRET!,
+      });
+      console.log('✅ CDP Client initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize CDP Client:', error);
+      throw error;
+    }
   }
 
   if (!publicClient) {
+    // Use Ankr RPC endpoint for Base network to avoid rate limiting
+    const ankrRpcUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
+    
     publicClient = createPublicClient({
       chain: base,
-      transport: http("https://base-mainnet.g.alchemy.com/v2/dnbpgJAxbCT9dbs-cHKAXVSYLNYDrt_n"),
+      transport: http(ankrRpcUrl),
     });
+    
+    console.log('✅ Public client initialized with Ankr RPC endpoint');
   }
   return { cdp, publicClient };
 };
@@ -240,6 +257,62 @@ export class CdpService {
     }
   }
 
+  /**
+   * Test token metadata fetching for any token address
+   */
+  async testTokenMetadata(contractAddress: `0x${string}`) {
+    try {
+      console.log(`Testing token metadata fetching for: ${contractAddress}`);
+      
+      const metadata = await this.fetchTokenMetadata(contractAddress);
+      
+      return {
+        success: true,
+        data: {
+          contractAddress,
+          metadata,
+          isKnownToken: this.getKnownTokenInfo(contractAddress) !== null,
+          cacheHit: tokenCache.has(contractAddress)
+        },
+        message: "Token metadata retrieved successfully"
+      };
+    } catch (error) {
+      console.error(`Token metadata test failed:`, error);
+      return {
+        success: false,
+        error: `Failed to fetch token metadata: ${(error as Error).message}`,
+        data: {
+          contractAddress,
+          isKnownToken: this.getKnownTokenInfo(contractAddress) !== null,
+          cacheHit: tokenCache.has(contractAddress)
+        }
+      };
+    }
+  }
+
+  /**
+   * Get token information by contract address
+   */
+  async getTokenInfo(contractAddress: `0x${string}`, network: "base" | "base-sepolia" | "ethereum" = "base") {
+    try {
+      const metadata = await this.fetchTokenMetadata(contractAddress);
+      
+      return {
+        success: true,
+        data: {
+          name: metadata.name,
+          symbol: metadata.symbol,
+          decimals: metadata.decimals,
+          contractAddress: contractAddress,
+          network: network
+        },
+        message: "Token information retrieved successfully"
+      };
+    } catch (error) {
+      throw new Error(`Failed to get token info: ${(error as Error).message}`);
+    }
+  }
+
   private async fetchTokenPrice(symbol: string, contractAddress?: string): Promise<TokenPrice | null> {
     // Skip price fetching for unknown tokens
     if (symbol === "UNKNOWN") {
@@ -456,6 +529,7 @@ export class CdpService {
     }
 
     if (tokenCache.has(contractAddress)) {
+      console.log(`Using cached metadata for ${contractAddress}`);
       return tokenCache.get(contractAddress);
     }
 
@@ -463,11 +537,6 @@ export class CdpService {
       const { publicClient } = initializeClient();
 
       console.log(`Fetching metadata for token: ${contractAddress}`);
-
-      // Try to fetch metadata with individual calls and better error handling
-      let name = "Unknown Token";
-      let symbol = "UNKNOWN";
-      let decimals = 18;
 
       // Try to get token info from a known token list first
       const knownToken = this.getKnownTokenInfo(contractAddress);
@@ -477,6 +546,13 @@ export class CdpService {
         return knownToken;
       }
 
+      console.log(`Token not in known list, fetching from blockchain...`);
+
+      // Try to fetch metadata with individual calls and better error handling
+      let name = "Unknown Token";
+      let symbol = "UNKNOWN";
+      let decimals = 18;
+
       try {
         name = await Promise.race([
           publicClient.readContract({
@@ -485,7 +561,7 @@ export class CdpService {
             functionName: "name",
           }) as Promise<string>,
           new Promise<string>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 5000)
+            setTimeout(() => reject(new Error('Name fetch timeout')), 10000)
           )
         ]);
         console.log(`Token name: ${name}`);
@@ -501,7 +577,7 @@ export class CdpService {
             functionName: "symbol",
           }) as Promise<string>,
           new Promise<string>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 5000)
+            setTimeout(() => reject(new Error('Symbol fetch timeout')), 10000)
           )
         ]);
         console.log(`Token symbol: ${symbol}`);
@@ -517,7 +593,7 @@ export class CdpService {
             functionName: "decimals",
           }),
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 5000)
+            setTimeout(() => reject(new Error('Decimals fetch timeout')), 10000)
           )
         ]));
         console.log(`Token decimals: ${decimals}`);
@@ -577,9 +653,9 @@ export class CdpService {
         symbol: "cbETH",
         decimals: 18,
       },
-      "0x19830739b089e6c310822bc67eeba9f79be8ae70": {
-        name: "WFOLAJINDAYOETH",
-        symbol: "WFOLAJINDAYOETH",
+      "0x907bdae00e91544A270694714832410aD8418888": {
+        name: "usezoracle",
+        symbol: "usezoracle",
         decimals: 18,
       },
     };

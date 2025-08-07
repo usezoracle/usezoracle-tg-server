@@ -1,0 +1,246 @@
+# Positions API
+
+The Positions API allows you to track and manage trading positions across different accounts. Positions are automatically created when you execute a snipe transaction and can be managed throughout their lifecycle.
+
+## Overview
+
+Positions represent trading positions that have been opened through the snipe functionality. Each position tracks:
+
+- **Entry details**: Token address, amount, entry price, transaction hash
+- **Current status**: Open, closed, or pending
+- **Performance metrics**: Current price, PnL, PnL percentage
+- **Account association**: Which account owns the position
+
+## Endpoints
+
+### Get All Positions
+
+Retrieve all positions with optional filtering.
+
+```http
+GET /api/positions
+```
+
+**Query Parameters:**
+- `accountName` (optional): Filter by account name
+- `status` (optional): Filter by status (`open`, `closed`, `pending`)
+
+**Example Request:**
+```bash
+curl -X GET "http://localhost:3000/api/positions"
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "message": "Successfully retrieved 5 positions",
+  "data": {
+    "open": [
+      {
+        "id": "Bright-0x4200000000000000000000000000000000000006-1703123456789",
+        "accountName": "Bright",
+        "tokenAddress": "0x4200000000000000000000000000000000000006",
+        "tokenSymbol": "WETH",
+        "tokenName": "Wrapped Ether",
+        "amount": "0.1",
+        "entryPrice": "2500.123456",
+        "currentPrice": "2550.654321",
+        "pnl": "0.005",
+        "pnlPercentage": 2.0,
+        "status": "open",
+        "transactionHash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        "timestamp": 1703123456
+      }
+    ],
+    "closed": [],
+    "pending": [],
+    "summary": {
+      "totalOpen": 1,
+      "totalClosed": 0,
+      "totalPending": 0,
+      "totalPnl": "0.000",
+      "totalPnlPercentage": 0.0
+    }
+  }
+}
+```
+
+### Get Position by ID
+
+Retrieve detailed information about a specific position.
+
+```http
+GET /api/positions/{positionId}
+```
+
+**Example Request:**
+```bash
+curl -X GET "http://localhost:3000/api/positions/Bright-0x4200000000000000000000000000000000000006-1703123456789"
+```
+
+### Get Positions by Account
+
+Retrieve all positions for a specific account.
+
+```http
+GET /api/positions/account/{accountName}
+```
+
+**Example Request:**
+```bash
+curl -X GET "http://localhost:3000/api/positions/account/Bright"
+```
+
+### Get Positions by Status
+
+Retrieve all positions with a specific status.
+
+```http
+GET /api/positions/status/{status}
+```
+
+**Status Values:**
+- `open`: Currently active positions
+- `closed`: Completed positions with PnL calculated
+- `pending`: Positions with pending transactions
+
+**Example Request:**
+```bash
+curl -X GET "http://localhost:3000/api/positions/status/open"
+```
+
+### Close Position
+
+Close an open position and calculate PnL.
+
+```http
+POST /api/positions/{positionId}/close
+```
+
+**Request Body:**
+```json
+{
+  "exitTransactionHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:3000/api/positions/Bright-0x4200000000000000000000000000000000000006-1703123456789/close" \
+  -H "Content-Type: application/json" \
+  -d '{"exitTransactionHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"}'
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "message": "Successfully closed position Bright-0x4200000000000000000000000000000000000006-1703123456789",
+  "data": {
+    "id": "Bright-0x4200000000000000000000000000000000000006-1703123456789",
+    "accountName": "Bright",
+    "tokenAddress": "0x4200000000000000000000000000000000000006",
+    "tokenSymbol": "WETH",
+    "tokenName": "Wrapped Ether",
+    "amount": "0.1",
+    "entryPrice": "2500.123456",
+    "currentPrice": "2550.654321",
+    "pnl": "0.005",
+    "pnlPercentage": 2.0,
+    "status": "closed",
+    "transactionHash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+    "timestamp": 1703123456,
+    "closedAt": 1703124000,
+    "exitTransactionHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+  }
+}
+```
+
+### Set Position to Pending
+
+Update a position status to pending (when transaction is pending).
+
+```http
+POST /api/positions/{positionId}/pending
+```
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:3000/api/positions/Bright-0x4200000000000000000000000000000000000006-1703123456789/pending"
+```
+
+## Position Lifecycle
+
+1. **Created**: When a snipe transaction is executed, a position is automatically created with status `open`
+2. **Pending**: Position can be set to `pending` when a transaction is being processed
+3. **Closed**: Position is closed when an exit transaction is provided, calculating final PnL
+
+## Data Models
+
+### Position Object
+
+```typescript
+interface Position {
+  id: string;                    // Unique identifier
+  accountName: string;           // Account that owns the position
+  tokenAddress: string;          // Token contract address
+  tokenSymbol: string;           // Token symbol
+  tokenName: string;             // Token name
+  amount: string;                // Amount of ETH spent
+  entryPrice: string;            // Price when position was opened
+  currentPrice?: string;         // Current price (for open positions)
+  pnl?: string;                  // Profit and loss in ETH
+  pnlPercentage?: number;        // Profit and loss percentage
+  status: 'open' | 'closed' | 'pending';
+  transactionHash: string;       // Entry transaction hash
+  timestamp: number;             // When position was opened
+  closedAt?: number;             // When position was closed
+  exitTransactionHash?: string;  // Exit transaction hash
+}
+```
+
+### Positions Response
+
+```typescript
+interface PositionsResponse {
+  open: Position[];              // Open positions
+  closed: Position[];            // Closed positions
+  pending: Position[];           // Pending positions
+  summary: {
+    totalOpen: number;
+    totalClosed: number;
+    totalPending: number;
+    totalPnl: string;
+    totalPnlPercentage: number;
+  };
+}
+```
+
+## Error Handling
+
+The API returns appropriate HTTP status codes:
+
+- `200`: Success
+- `400`: Bad request (invalid parameters)
+- `404`: Position not found
+- `500`: Internal server error
+
+Error responses follow this format:
+
+```json
+{
+  "success": false,
+  "error": "Error message"
+}
+```
+
+## Integration with Snipe
+
+Positions are automatically created when you execute a snipe transaction. The snipe endpoint will:
+
+1. Execute the transaction using CDP
+2. Create a new position with status `open`
+3. Track the position for future management
+
+This allows you to monitor your trading performance and manage positions throughout their lifecycle. 

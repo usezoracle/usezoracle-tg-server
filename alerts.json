@@ -1,0 +1,51 @@
+{
+  "priceAlerts": {},
+  "portfolioAlerts": {
+    "portfolio-Bright-value_increase-1754527321491": {
+      "id": "portfolio-Bright-value_increase-1754527321491",
+      "accountName": "Bright",
+      "alertType": "value_increase",
+      "threshold": "1000.00",
+      "condition": "above",
+      "isActive": true,
+      "createdAt": 1754527321
+    }
+  },
+  "tradeAlerts": {
+    "trade-Bright-large_trade-1754527321794": {
+      "id": "trade-Bright-large_trade-1754527321794",
+      "accountName": "Bright",
+      "alertType": "large_trade",
+      "tokenAddress": "0x4200000000000000000000000000000000000006",
+      "tokenSymbol": "WETH",
+      "amount": "0.5",
+      "isActive": true,
+      "createdAt": 1754527321
+    }
+  },
+  "marketAlerts": {
+    "market-price_spike-1754527322291": {
+      "id": "market-price_spike-1754527322291",
+      "alertType": "price_spike",
+      "tokenAddress": "0x4200000000000000000000000000000000000006",
+      "tokenSymbol": "WETH",
+      "threshold": "100.00",
+      "condition": "above",
+      "isActive": true,
+      "createdAt": 1754527322
+    }
+  },
+  "copyTradingAlerts": {
+    "copy-Bright-wallet_activity-1754527322891": {
+      "id": "copy-Bright-wallet_activity-1754527322891",
+      "accountName": "Bright",
+      "alertType": "wallet_activity",
+      "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+      "tokenAddress": "0x4200000000000000000000000000000000000006",
+      "tokenSymbol": "WETH",
+      "amount": "0.1",
+      "isActive": true,
+      "createdAt": 1754527323
+    }
+  }
+}

@@ -1,0 +1,81 @@
+---
+title: 'Token Approvals Guide'
+description: 'How to handle token approvals for swaps'
+---
+
+# Token Approvals Guide
+
+When executing swaps, you need to approve the Permit2 contract to spend your tokens before the swap can be executed.
+
+## What is Token Approval?
+
+Token approval is a security feature in ERC-20 tokens that requires you to explicitly give permission to a smart contract (in this case, the Permit2 contract) to spend your tokens on your behalf.
+
+## The Permit2 Contract
+
+- **Contract Address**: `0x000000000022d473030f116ddee9f6b43ac78ba3`
+- **Purpose**: Handles token approvals for swaps
+- **Network**: Base (and other supported networks)
+
+## How to Approve Tokens
+
+### Method 1: Using a Wallet Interface
+
+1. **Connect your wallet** to the Base network
+2. **Navigate to the token** you want to swap
+3. **Find the "Approve" or "Allow" function**
+4. **Enter the Permit2 contract address**: `0x000000000022d473030f116ddee9f6b43ac78ba3`
+5. **Set the approval amount** (the amount you want to swap or higher for future swaps)
+6. **Confirm the transaction**
+
+### Method 2: Using Etherscan/BaseScan
+
+1. **Go to BaseScan**: https://basescan.org/
+2. **Find your token contract**
+3. **Go to the "Contract" tab**
+4. **Click "Write Contract"**
+5. **Connect your wallet**
+6. **Call the `approve` function**:
+   - `spender`: `0x000000000022d473030f116ddee9f6b43ac78ba3`
+   - `amount`: The amount you want to approve (in wei/smallest unit)
+
+## Common Errors and Solutions
+
+### Error: "Insufficient token allowance for swap"
+
+**Cause**: The Permit2 contract doesn't have permission to spend your tokens.
+
+**Solution**: Approve the Permit2 contract to spend your tokens.
+
+### Error: "ERC20: transfer amount exceeds balance"
+
+**Cause**: You're trying to swap more tokens than you have.
+
+**Solution**: Check your token balance and reduce the swap amount.
+
+### Error: "Insufficient balance to execute the transaction"
+
+**Cause**: You don't have enough ETH to pay for gas fees.
+
+**Solution**: Add some ETH to your wallet for gas fees.
+
+## Important Notes
+
+- **Native ETH**: No approval is required for native ETH swaps
+- **Approval Amount**: You can approve more than you need for future swaps
+- **Gas Fees**: Approval transactions require gas fees
+- **One-time Setup**: Once approved, you can swap that token without re-approving (unless you exceed the approved amount)
+
+## Example Approval Process
+
+1. **Check your token balance**
+2. **Approve the Permit2 contract** for the amount you want to swap
+3. **Wait for approval transaction** to be confirmed
+4. **Execute your swap** using the API
+
+## Security Considerations
+
+- **Only approve trusted contracts**: The Permit2 contract is safe to approve
+- **Review approval amounts**: Don't approve more than necessary
+- **Revoke approvals**: You can revoke approvals by setting the amount to 0
+- **Monitor transactions**: Always review transactions before confirming 

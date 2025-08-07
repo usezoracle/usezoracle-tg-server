@@ -156,6 +156,20 @@ The API uses standard token addresses for common cryptocurrencies:
 
 For other tokens, the API will return their respective contract addresses.
 
+## Token Approvals for Swaps
+
+When executing swaps, token approvals need to be handled manually before the swap. The Permit2 contract (`0x000000000022d473030f116ddee9f6b43ac78ba3`) requires approval to spend your tokens.
+
+### Manual Approval Process:
+
+1. **Approve Permit2 Contract**: Before swapping, you need to approve the Permit2 contract to spend your tokens
+2. **Contract Address**: `0x000000000022d473030f116ddee9f6b43ac78ba3`
+3. **Native ETH**: No approval is required for native ETH swaps
+4. **Approval Amount**: Approve the exact amount you want to swap or a higher amount for future swaps
+
+### Common Approval Error:
+If you see "Insufficient token allowance for swap", you need to approve the Permit2 contract first.
+
 ## Error Handling
 
 If the account does not exist or there is an issue retrieving balances, the API returns an error response:
