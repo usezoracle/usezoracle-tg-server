@@ -1,5 +1,7 @@
 import { ethers } from 'ethers';
 import { AnkrProvider } from '@ankr.com/ankr.js';
+import { CopyTradingService } from './copyTradingService.js';
+import { CopyTradeEvent } from '../types/index.js';
 
 export interface DepositEvent {
   from: string;
@@ -13,14 +15,6 @@ export interface DepositEvent {
   tokenName?: string; // For ERC-20 tokens
   tokenDecimals?: number; // For ERC-20 tokens
   isERC20: boolean; // Whether this is an ERC-20 transfer or ETH transfer
-}
-
-export interface CopyTradeEvent {
-  walletAddress: string;
-  transactionHash: string;
-  method: string;
-  params: any;
-  timestamp: number;
 }
 
 export interface SnipeEvent {
@@ -228,8 +222,37 @@ export class MonitoringService {
    */
   async monitorCopyTrading(walletAddress: string, callback?: (event: CopyTradeEvent) => void): Promise<CopyTradeEvent[]> {
     try {
+      // Use the copy trading service to monitor and execute copy trades
+      const copyTradingService = CopyTradingService.getInstance();
+      const executedEvents = await copyTradingService.monitorAndExecuteCopyTrades(walletAddress);
+      
+      // Also create alerts for any target wallet activity (even if no copy trade executed)
+      await this.monitorTargetWalletActivity(walletAddress);
+      
+      // Call callback for each executed event
+      if (callback) {
+        for (const event of executedEvents) {
+          callback(event);
+        }
+      }
+
+      return executedEvents;
+    } catch (error) {
+      console.error('Error monitoring copy trading:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Monitor target wallet activity and create alerts
+   */
+  async monitorTargetWalletActivity(walletAddress: string): Promise<void> {
+    try {
+      const copyTradingService = CopyTradingService.getInstance();
+      
+      // Get recent transactions for the target wallet
       const latestBlock = await this.provider.getBlockNumber();
-      const fromBlock = latestBlock - 100; // Monitor last 100 blocks for recent activity
+      const fromBlock = latestBlock - 10; // Check last 10 blocks
 
       const filter = {
         fromBlock: fromBlock,
@@ -238,35 +261,28 @@ export class MonitoringService {
       };
 
       const logs = await this.provider.getLogs(filter);
-      const copyTradeEvents: CopyTradeEvent[] = [];
 
       for (const log of logs) {
-        const block = await this.provider.getBlock(log.blockNumber!);
         const transaction = await this.provider.getTransaction(log.transactionHash!);
-
-        if (transaction && block) {
-          // Decode transaction data to understand what the wallet is doing
-          const decodedData = this.decodeTransactionData(transaction.data);
+        
+        if (transaction && this.isBuyTransaction(transaction)) {
+          const tokenInfo = await this.extractTokenInfo(transaction);
           
-          const event: CopyTradeEvent = {
-            walletAddress: walletAddress,
-            transactionHash: log.transactionHash!,
-            method: decodedData.method,
-            params: decodedData.params,
-            timestamp: block.timestamp
-          };
-
-          copyTradeEvents.push(event);
-          if (callback) {
-            callback(event);
+          if (tokenInfo) {
+            // Create alert for target wallet activity
+            await copyTradingService.createTargetWalletAlert(
+              walletAddress,
+              tokenInfo.tokenAddress,
+              tokenInfo.tokenSymbol,
+              tokenInfo.tokenName,
+              ethers.formatEther(transaction.value),
+              log.transactionHash!
+            );
           }
         }
       }
-
-      return copyTradeEvents;
     } catch (error) {
-      console.error('Error monitoring copy trading:', error);
-      throw error;
+      console.error('Error monitoring target wallet activity:', error);
     }
   }
 
@@ -466,6 +482,95 @@ export class MonitoringService {
     } catch (error) {
       console.error('Error getting recent transactions:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Check if transaction is a buy transaction
+   */
+  private isBuyTransaction(transaction: any): boolean {
+    // Check if it's a direct ETH transfer (buying tokens)
+    if (transaction.value > 0 && transaction.data === '0x') {
+      return true;
+    }
+
+    // Check for common buy function signatures
+    const buySignatures = [
+      '0x7ff36ab5', // swapExactETHForTokens
+      '0xb6f9de95', // swapExactETHForTokensSupportingFeeOnTransferTokens
+      '0xfb3bdb41', // swapExactTokensForTokensSupportingFeeOnTransferTokens
+      '0x38ed1739'  // swapExactTokensForTokens
+    ];
+
+    const methodId = transaction.data.slice(0, 10);
+    return buySignatures.includes(methodId);
+  }
+
+  /**
+   * Extract token information from transaction
+   */
+  private async extractTokenInfo(transaction: any): Promise<{ tokenAddress: string; tokenSymbol: string; tokenName: string } | null> {
+    try {
+      // For direct ETH transfers, the recipient is the token address
+      if (transaction.data === '0x' && transaction.to) {
+        const tokenContract = new ethers.Contract(
+          transaction.to,
+          [
+            'function symbol() view returns (string)',
+            'function name() view returns (string)'
+          ],
+          this.provider
+        );
+
+        const [symbol, name] = await Promise.all([
+          tokenContract.symbol(),
+          tokenContract.name()
+        ]);
+
+        return {
+          tokenAddress: transaction.to,
+          tokenSymbol: symbol,
+          tokenName: name
+        };
+      }
+
+      // For swap transactions, decode the data to get token address
+      if (transaction.data.length > 10) {
+        // This is a simplified version - in production you'd want more robust decoding
+        const methodId = transaction.data.slice(0, 10);
+        
+        if (methodId === '0x7ff36ab5' || methodId === '0xb6f9de95') {
+          // swapExactETHForTokens - token address is in the path
+          const pathData = transaction.data.slice(10);
+          // Simplified path extraction - in production use proper ABI decoding
+          const tokenAddress = '0x' + pathData.slice(24, 64);
+          
+          const tokenContract = new ethers.Contract(
+            tokenAddress,
+            [
+              'function symbol() view returns (string)',
+              'function name() view returns (string)'
+            ],
+            this.provider
+          );
+
+          const [symbol, name] = await Promise.all([
+            tokenContract.symbol(),
+            tokenContract.name()
+          ]);
+
+          return {
+            tokenAddress,
+            tokenSymbol: symbol,
+            tokenName: name
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error extracting token info:', error);
+      return null;
     }
   }
 } 

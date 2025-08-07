@@ -131,6 +131,44 @@ export interface CopyTradingAlert {
   triggeredAt?: number;
 }
 
+export interface CopyTradeConfig {
+  id: string;
+  accountName: string;
+  targetWalletAddress: string;
+  delegationAmount: string; // Amount in ETH that can be used for copy trading
+  maxSlippage: number; // Maximum slippage percentage (default 5%)
+  isActive: boolean;
+  createdAt: number;
+  lastExecutedAt?: number;
+  totalExecutedTrades: number;
+  totalSpent: string;
+}
+
+export interface CopyTradeEvent {
+  id: string;
+  configId: string;
+  accountName: string;
+  targetWalletAddress: string;
+  tokenAddress: string;
+  tokenSymbol: string;
+  tokenName: string;
+  originalAmount: string;
+  copiedAmount: string;
+  transactionHash: string;
+  timestamp: number;
+  status: 'pending' | 'success' | 'failed';
+  errorMessage?: string;
+}
+
+export interface CopyTradeExecution {
+  success: boolean;
+  transactionHash?: string;
+  errorMessage?: string;
+  copiedAmount: string;
+  tokenAddress: string;
+  tokenSymbol: string;
+}
+
 export interface AlertResponse {
   priceAlerts: PriceAlert[];
   portfolioAlerts: PortfolioAlert[];

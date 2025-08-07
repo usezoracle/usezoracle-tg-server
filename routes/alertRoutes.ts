@@ -413,8 +413,28 @@ router.post('/market', async (req: Request, res: Response) => {
  * @swagger
  * /api/alerts/copy-trading:
  *   post:
- *     summary: Create a copy trading alert
- *     description: Create an alert for copy trading activities
+ *     summary: Monitor wallet for copy trading (DEPRECATED)
+ *     description: This endpoint is deprecated. Copy trading alerts are now created automatically when copy trades are executed or when target wallets make trades. Use the copy trading service endpoints instead.
+ *     tags:
+ *       - Alerts
+ *     responses:
+ *       410:
+ *         description: This endpoint is deprecated. Copy trading alerts are created automatically.
+ */
+router.post('/copy-trading', async (req: Request, res: Response) => {
+  res.status(410).json({
+    success: false,
+    error: 'This endpoint is deprecated. Copy trading alerts are now created automatically when copy trades are executed or when target wallets make trades. Use the copy trading service endpoints instead.',
+    message: 'Copy trading alerts are created automatically by the copy trading service when trades are detected.'
+  } as ApiResponse);
+});
+
+/**
+ * @swagger
+ * /api/alerts/setup-copy-trading:
+ *   post:
+ *     summary: Setup copy trading configuration
+ *     description: Create a copy trading configuration that will automatically create alerts when the target wallet makes trades
  *     tags:
  *       - Alerts
  *     requestBody:
@@ -425,71 +445,190 @@ router.post('/market', async (req: Request, res: Response) => {
  *             type: object
  *             required:
  *               - accountName
- *               - alertType
- *               - walletAddress
+ *               - targetWalletAddress
+ *               - delegationAmount
  *             properties:
  *               accountName:
  *                 type: string
- *                 description: The account name
- *               alertType:
+ *                 description: The account name that will copy trade
+ *               targetWalletAddress:
  *                 type: string
- *                 enum: [wallet_activity, large_transaction, new_token_purchase]
- *                 description: Type of copy trading alert
- *               walletAddress:
+ *                 description: The wallet address to monitor and copy
+ *               delegationAmount:
  *                 type: string
- *                 description: The wallet address to monitor
- *               tokenAddress:
- *                 type: string
- *                 description: The token contract address (optional)
- *               amount:
- *                 type: string
- *                 description: The transaction amount (optional)
+ *                 description: The maximum amount of ETH to use for copy trading
+ *               maxSlippage:
+ *                 type: number
+ *                 description: Maximum slippage tolerance (default 0.05 = 5%)
  *     responses:
  *       200:
- *         description: Copy trading alert created successfully
+ *         description: Copy trading configuration created successfully
  *       400:
  *         description: Bad request
  *       500:
  *         description: Internal server error
  */
-router.post('/copy-trading', async (req: Request, res: Response) => {
+router.post('/setup-copy-trading', async (req: Request, res: Response) => {
   try {
-    const { accountName, alertType, walletAddress, tokenAddress, amount } = req.body;
+    const { accountName, targetWalletAddress, delegationAmount, maxSlippage = 0.05 } = req.body;
     
-    if (!accountName || !alertType || !walletAddress) {
+    if (!accountName || !targetWalletAddress || !delegationAmount) {
       return res.status(400).json({
         success: false,
-        error: 'accountName, alertType, and walletAddress are required'
+        error: 'accountName, targetWalletAddress, and delegationAmount are required'
       } as ApiResponse);
     }
     
-    if (!['wallet_activity', 'large_transaction', 'new_token_purchase'].includes(alertType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType must be "wallet_activity", "large_transaction", or "new_token_purchase"'
-      } as ApiResponse);
-    }
+    // Import and use the copy trading service
+    const { CopyTradingService } = await import('../services/copyTradingService.js');
+    const copyTradingService = CopyTradingService.getInstance();
     
-    const alert = await getAlertsService().createCopyTradingAlert(
+    const config = await copyTradingService.createCopyTradeConfig(
       accountName,
-      alertType,
-      walletAddress,
-      tokenAddress,
-      amount
+      targetWalletAddress,
+      delegationAmount,
+      maxSlippage
     );
     
     const response: ApiResponse = {
       success: true,
-      data: alert,
-      message: `Copy trading alert created: ${alertType} for wallet ${walletAddress}`
+      data: config,
+      message: `Copy trading configuration created for ${accountName} monitoring ${targetWalletAddress}`
     };
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating copy trading alert:', error);
+    console.error('Error setting up copy trading:', error);
     res.status(500).json({
       success: false,
-      error: (error as Error).message || 'Failed to create copy trading alert'
+      error: (error as Error).message || 'Failed to setup copy trading'
+    } as ApiResponse);
+  }
+});
+
+/**
+ * @swagger
+ * /api/alerts/copy-trading/status:
+ *   get:
+ *     summary: Get copy trading status
+ *     description: Get the status of copy trading configurations and recent events
+ *     tags:
+ *       - Alerts
+ *     parameters:
+ *       - in: query
+ *         name: accountName
+ *         schema:
+ *           type: string
+ *         description: Filter by account name
+ *     responses:
+ *       200:
+ *         description: Copy trading status retrieved successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/copy-trading/status', async (req: Request, res: Response) => {
+  try {
+    const { accountName } = req.query;
+    
+    if (!accountName) {
+      return res.status(400).json({
+        success: false,
+        error: 'accountName is required'
+      } as ApiResponse);
+    }
+    
+    // Import and use the copy trading service
+    const { CopyTradingService } = await import('../services/copyTradingService.js');
+    const copyTradingService = CopyTradingService.getInstance();
+    
+    const configs = await copyTradingService.getCopyTradeConfigs(accountName as string);
+    const events = await copyTradingService.getCopyTradeEvents(accountName as string);
+    
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        configs,
+        events,
+        summary: {
+          totalConfigs: configs.length,
+          activeConfigs: configs.filter(c => c.isActive).length,
+          totalEvents: events.length,
+          successfulTrades: events.filter(e => e.status === 'success').length,
+          totalSpent: configs.reduce((sum, c) => sum + parseFloat(c.totalSpent), 0).toFixed(6)
+        }
+      },
+      message: `Copy trading status for ${accountName}: ${configs.filter(c => c.isActive).length} active configs, ${events.filter(e => e.status === 'success').length} successful trades`
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting copy trading status:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message || 'Failed to get copy trading status'
+    } as ApiResponse);
+  }
+});
+
+/**
+ * @swagger
+ * /api/alerts/copy-trading/stop:
+ *   post:
+ *     summary: Stop copy trading configuration
+ *     description: Deactivate a copy trading configuration
+ *     tags:
+ *       - Alerts
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - configId
+ *             properties:
+ *               configId:
+ *                 type: string
+ *                 description: The configuration ID to stop
+ *     responses:
+ *       200:
+ *         description: Copy trading configuration stopped successfully
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/copy-trading/stop', async (req: Request, res: Response) => {
+  try {
+    const { configId } = req.body;
+    
+    if (!configId) {
+      return res.status(400).json({
+        success: false,
+        error: 'configId is required'
+      } as ApiResponse);
+    }
+    
+    // Import and use the copy trading service
+    const { CopyTradingService } = await import('../services/copyTradingService.js');
+    const copyTradingService = CopyTradingService.getInstance();
+    
+    const updatedConfig = await copyTradingService.updateCopyTradeConfig(configId, {
+      isActive: false
+    });
+    
+    const response: ApiResponse = {
+      success: true,
+      data: updatedConfig,
+      message: `Copy trading configuration ${configId} stopped successfully`
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error stopping copy trading:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message || 'Failed to stop copy trading'
     } as ApiResponse);
   }
 });

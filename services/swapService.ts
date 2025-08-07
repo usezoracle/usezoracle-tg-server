@@ -231,6 +231,35 @@ export class SwapService {
 
       console.log(`Swap executed successfully: ${swapResult.transactionHash}`);
 
+      // Create trade alert for successful swap
+      try {
+        const { AlertsService } = await import('./alertsService.js');
+        const alertsService = new AlertsService();
+        
+        // Create successful trade alert
+        await alertsService.createTradeAlert(
+          params.accountName,
+          'successful_trade',
+          params.fromToken,
+          fromAmount.toString()
+        );
+        console.log(`✅ Trade alert created for successful swap`);
+        
+        // Check if this is a large trade (e.g., > 1 ETH or equivalent)
+        const isLargeTrade = this.isLargeTrade(fromAmount, params.fromToken);
+        if (isLargeTrade) {
+          await alertsService.createTradeAlert(
+            params.accountName,
+            'large_trade',
+            params.fromToken,
+            fromAmount.toString()
+          );
+          console.log(`✅ Large trade alert created for swap`);
+        }
+      } catch (alertError) {
+        console.log(`⚠️ Failed to create trade alert:`, (alertError as Error).message);
+      }
+
       // Wait for transaction confirmation
       console.log(`Waiting for transaction confirmation...`);
       const receipt = await this.publicClient.waitForTransactionReceipt({
@@ -287,6 +316,21 @@ export class SwapService {
       };
     } catch (error) {
       console.error(`Swap execution failed:`, error);
+      
+      // Create trade alert for failed swap
+      try {
+        const { AlertsService } = await import('./alertsService.js');
+        const alertsService = new AlertsService();
+        await alertsService.createTradeAlert(
+          params.accountName,
+          'failed_transaction',
+          params.fromToken,
+          params.fromAmount
+        );
+        console.log(`✅ Trade alert created for failed swap`);
+      } catch (alertError) {
+        console.log(`⚠️ Failed to create trade alert:`, (alertError as Error).message);
+      }
       
       // Provide more specific error messages
       if (error instanceof Error) {
@@ -1056,6 +1100,24 @@ export class SwapService {
     } catch (error) {
       console.error(`ETH balance check failed:`, error);
       throw new Error(`Failed to check ETH balance: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Helper to determine if a trade is considered "large"
+   * This is a placeholder and can be refined based on specific criteria
+   * For example, a large trade might be defined as > 1 ETH or > 1000 USDC/USDT
+   */
+  private isLargeTrade(fromAmount: bigint, fromToken: string): boolean {
+    const fromTokenLower = fromToken.toLowerCase();
+    const isNativeAsset = fromTokenLower === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+    if (isNativeAsset) {
+      // For ETH, a large trade is typically > 1 ETH
+      return fromAmount > BigInt(1000000000000000000); // 1 ETH in wei
+    } else {
+      // For tokens, a large trade is typically > 1000 USDC/USDT
+      return fromAmount > BigInt(1000000000000000000); // 1 ETH in wei
     }
   }
 }

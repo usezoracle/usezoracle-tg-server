@@ -400,6 +400,68 @@ export class AlertsService {
   }
 
   /**
+   * Check and trigger market alerts
+   */
+  async checkMarketAlerts(): Promise<MarketAlert[]> {
+    const triggeredAlerts: MarketAlert[] = [];
+    
+    for (const [id, alert] of this.marketAlerts) {
+      if (!alert.isActive) continue;
+      
+      try {
+        let shouldTrigger = false;
+        let currentValue = '0';
+        
+        if (alert.alertType === 'price_spike' && alert.tokenAddress) {
+          // Get current token price in USD
+          const currentPrice = await this.getTokenPrice(alert.tokenAddress);
+          currentValue = currentPrice;
+          const threshold = parseFloat(alert.threshold);
+          const price = parseFloat(currentPrice);
+          
+          if (alert.condition === 'above' && price >= threshold) {
+            shouldTrigger = true;
+          } else if (alert.condition === 'below' && price <= threshold) {
+            shouldTrigger = true;
+          }
+        } else if (alert.alertType === 'volume_surge' && alert.tokenAddress) {
+          // For volume surge, we would need to get trading volume data
+          // This is a placeholder - in a real implementation you'd get volume from DEX APIs
+          console.log(`⚠️ Volume surge alerts not yet implemented for ${alert.tokenAddress}`);
+          continue;
+        } else if (alert.alertType === 'market_opportunity') {
+          // Market opportunity could be based on various factors
+          // This is a placeholder - in a real implementation you'd analyze market conditions
+          console.log(`⚠️ Market opportunity alerts not yet implemented`);
+          continue;
+        }
+        
+        if (shouldTrigger) {
+          const updatedAlert: MarketAlert = {
+            ...alert,
+            isActive: false,
+            triggeredAt: Math.floor(Date.now() / 1000),
+            triggeredValue: currentValue
+          };
+          
+          this.marketAlerts.set(id, updatedAlert);
+          triggeredAlerts.push(updatedAlert);
+          
+          console.log(`🚨 Market alert triggered: ${alert.alertType} ${alert.condition} ${alert.threshold} (current: ${currentValue})`);
+        }
+      } catch (error) {
+        console.log(`⚠️ Error checking market alert ${id}:`, (error as Error).message);
+      }
+    }
+    
+    if (triggeredAlerts.length > 0) {
+      await this.saveAlertsToStorage();
+    }
+    
+    return triggeredAlerts;
+  }
+
+  /**
    * Get all alerts
    */
   async getAlerts(
@@ -410,6 +472,7 @@ export class AlertsService {
       // Check for triggered alerts
       await this.checkPriceAlerts();
       await this.checkPortfolioAlerts();
+      await this.checkMarketAlerts();
       
       let priceAlerts = Array.from(this.priceAlerts.values());
       let portfolioAlerts = Array.from(this.portfolioAlerts.values());

@@ -1558,7 +1558,7 @@ paths:
                   example: "price_spike"
                 threshold:
                   type: string
-                  description: The threshold value to trigger the alert
+                  description: The threshold value to trigger the alert. For price_spike alerts, use USD value (e.g., "2500.00" for $2,500). For volume_surge alerts, use token units (e.g., "1000000" for 1M tokens).
                   example: "100.00"
                 condition:
                   type: string
@@ -2547,3 +2547,132 @@ components:
                   type: number
                   description: Total number of active alerts
                   example: 1
+
+    CopyTradeConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the copy trade configuration
+          example: "copy_1703123456789_abc123def"
+        accountName:
+          type: string
+          description: Name of the account that owns this configuration
+          example: "myWallet"
+        targetWalletAddress:
+          type: string
+          description: Address of the wallet to copy trades from
+          example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        delegationAmount:
+          type: string
+          description: Amount of ETH delegated for copy trading
+          example: "0.5"
+        maxSlippage:
+          type: number
+          description: Maximum slippage percentage (0.05 = 5%)
+          example: 0.05
+        isActive:
+          type: boolean
+          description: Whether the copy trading configuration is active
+          example: true
+        createdAt:
+          type: number
+          description: Timestamp when the configuration was created
+          example: 1703123456
+        lastExecutedAt:
+          type: number
+          description: Timestamp when the last copy trade was executed
+          example: 1703124000
+        totalExecutedTrades:
+          type: number
+          description: Total number of copy trades executed
+          example: 5
+        totalSpent:
+          type: string
+          description: Total amount of ETH spent on copy trades
+          example: "2.5"
+
+    CopyTradeEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the copy trade event
+          example: "event_1703123456789_xyz789abc"
+        configId:
+          type: string
+          description: ID of the copy trade configuration that triggered this event
+          example: "copy_1703123456789_abc123def"
+        accountName:
+          type: string
+          description: Name of the account that executed the copy trade
+          example: "myWallet"
+        targetWalletAddress:
+          type: string
+          description: Address of the wallet being copied
+          example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        tokenAddress:
+          type: string
+          description: Address of the token that was bought
+          example: "0x4200000000000000000000000000000000000006"
+        tokenSymbol:
+          type: string
+          description: Symbol of the token that was bought
+          example: "WETH"
+        tokenName:
+          type: string
+          description: Name of the token that was bought
+          example: "Wrapped Ether"
+        originalAmount:
+          type: string
+          description: Original amount from the target wallet transaction
+          example: "1.0"
+        copiedAmount:
+          type: string
+          description: Amount copied in the copy trade
+          example: "0.5"
+        transactionHash:
+          type: string
+          description: Hash of the copy trade transaction
+          example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        timestamp:
+          type: number
+          description: Timestamp when the copy trade was executed
+          example: 1703123456
+        status:
+          type: string
+          enum: [pending, success, failed]
+          description: Status of the copy trade execution
+          example: "success"
+        errorMessage:
+          type: string
+          description: Error message if the copy trade failed
+          example: "Insufficient balance"
+
+    CopyTradeExecution:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the copy trade execution was successful
+          example: true
+        transactionHash:
+          type: string
+          description: Hash of the executed transaction
+          example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        errorMessage:
+          type: string
+          description: Error message if the execution failed
+          example: "Insufficient balance"
+        copiedAmount:
+          type: string
+          description: Amount that was copied
+          example: "0.5"
+        tokenAddress:
+          type: string
+          description: Address of the token that was bought
+          example: "0x4200000000000000000000000000000000000006"
+        tokenSymbol:
+          type: string
+          description: Symbol of the token that was bought
+          example: "WETH"

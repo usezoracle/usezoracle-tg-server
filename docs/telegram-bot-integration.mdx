@@ -1,0 +1,377 @@
+---
+title: 'Telegram Bot Integration'
+description: 'How to integrate copy trading features into your Telegram bot'
+---
+
+# Telegram Bot Integration Guide
+
+This guide shows you how to integrate the copy trading features into your Telegram bot for a seamless user experience.
+
+## Overview
+
+The copy trading system provides automatic alert creation and trade execution. Here's how to integrate it into your Telegram bot:
+
+## Bot Commands Structure
+
+### 1. Setup Copy Trading
+
+**Command:** `/copytrade setup`
+
+**Usage:**
+```
+/copytrade setup <account_name> <target_wallet> <delegation_amount> [slippage]
+```
+
+**Example:**
+```
+/copytrade setup Bright 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6 0.1 0.05
+```
+
+**Bot Response:**
+```
+✅ Copy Trading Setup Complete!
+
+Account: Bright
+Target Wallet: 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6
+Delegation Amount: 0.1 ETH
+Max Slippage: 5%
+
+Status: Active
+Configuration ID: copy_1703123456789_abc123def
+
+The system will now:
+• Monitor the target wallet for trades
+• Create alerts automatically when trades are detected
+• Execute copy trades when conditions are met
+```
+
+### 2. Check Copy Trading Status
+
+**Command:** `/copytrade status`
+
+**Usage:**
+```
+/copytrade status <account_name>
+```
+
+**Example:**
+```
+/copytrade status Bright
+```
+
+**Bot Response:**
+```
+📊 Copy Trading Status for Bright
+
+Active Configurations: 2
+Total Events: 15
+Successful Trades: 12
+Total Spent: 0.045 ETH
+
+Recent Activity:
+• 2 minutes ago: Bought 0.02 ETH of TOKEN
+• 15 minutes ago: Bought 0.01 ETH of TOKEN2
+• 1 hour ago: Bought 0.015 ETH of TOKEN3
+
+Configuration Details:
+• Config 1: Monitoring 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6 (Active)
+• Config 2: Monitoring 0x1234567890123456789012345678901234567890 (Active)
+```
+
+### 3. Stop Copy Trading
+
+**Command:** `/copytrade stop`
+
+**Usage:**
+```
+/copytrade stop <config_id>
+```
+
+**Example:**
+```
+/copytrade stop copy_1703123456789_abc123def
+```
+
+**Bot Response:**
+```
+🛑 Copy Trading Stopped
+
+Configuration ID: copy_1703123456789_abc123def
+Status: Inactive
+
+The system will no longer:
+• Monitor this target wallet
+• Execute copy trades for this configuration
+• Create alerts for this wallet
+
+You can restart it anytime with /copytrade setup
+```
+
+### 4. View Alerts
+
+**Command:** `/alerts copy`
+
+**Usage:**
+```
+/alerts copy <account_name>
+```
+
+**Example:**
+```
+/alerts copy Bright
+```
+
+**Bot Response:**
+```
+🔔 Copy Trading Alerts for Bright
+
+Recent Alerts (Last 24 hours):
+• 2 minutes ago: Target wallet bought TOKEN for 0.02 ETH
+• 15 minutes ago: Copy trade executed for TOKEN2 (0.01 ETH)
+• 1 hour ago: Target wallet bought TOKEN3 for 0.015 ETH
+
+Total Alerts Today: 8
+Active Alerts: 3
+```
+
+## Implementation Example
+
+Here's how to implement these commands in your Telegram bot:
+
+```javascript
+// Copy Trading Setup Command
+bot.command('copytrade', async (ctx) => {
+  const args = ctx.message.text.split(' ');
+  const subCommand = args[1];
+  
+  if (subCommand === 'setup') {
+    const accountName = args[2];
+    const targetWallet = args[3];
+    const delegationAmount = args[4];
+    const slippage = args[5] || 0.05;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/alerts/setup-copy-trading`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountName,
+          targetWalletAddress: targetWallet,
+          delegationAmount,
+          maxSlippage: parseFloat(slippage)
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const config = data.data;
+        await ctx.reply(`
+✅ Copy Trading Setup Complete!
+
+Account: ${config.accountName}
+Target Wallet: ${config.targetWalletAddress}
+Delegation Amount: ${config.delegationAmount} ETH
+Max Slippage: ${config.maxSlippage * 100}%
+
+Status: Active
+Configuration ID: ${config.id}
+
+The system will now:
+• Monitor the target wallet for trades
+• Create alerts automatically when trades are detected
+• Execute copy trades when conditions are met
+        `);
+      } else {
+        await ctx.reply(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      await ctx.reply(`❌ Failed to setup copy trading: ${error.message}`);
+    }
+  }
+  
+  else if (subCommand === 'status') {
+    const accountName = args[2];
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/alerts/copy-trading/status?accountName=${accountName}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const { configs, events, summary } = data.data;
+        
+        let statusMessage = `📊 Copy Trading Status for ${accountName}\n\n`;
+        statusMessage += `Active Configurations: ${summary.activeConfigs}\n`;
+        statusMessage += `Total Events: ${summary.totalEvents}\n`;
+        statusMessage += `Successful Trades: ${summary.successfulTrades}\n`;
+        statusMessage += `Total Spent: ${summary.totalSpent} ETH\n\n`;
+        
+        if (events.length > 0) {
+          statusMessage += `Recent Activity:\n`;
+          events.slice(0, 3).forEach(event => {
+            const timeAgo = getTimeAgo(event.timestamp);
+            statusMessage += `• ${timeAgo}: ${event.status === 'success' ? 'Bought' : 'Failed to buy'} ${event.copiedAmount} ETH of ${event.tokenSymbol}\n`;
+          });
+        }
+        
+        await ctx.reply(statusMessage);
+      } else {
+        await ctx.reply(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      await ctx.reply(`❌ Failed to get status: ${error.message}`);
+    }
+  }
+  
+  else if (subCommand === 'stop') {
+    const configId = args[2];
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/alerts/copy-trading/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configId })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await ctx.reply(`
+🛑 Copy Trading Stopped
+
+Configuration ID: ${configId}
+Status: Inactive
+
+The system will no longer:
+• Monitor this target wallet
+• Execute copy trades for this configuration
+• Create alerts for this wallet
+
+You can restart it anytime with /copytrade setup
+        `);
+      } else {
+        await ctx.reply(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      await ctx.reply(`❌ Failed to stop copy trading: ${error.message}`);
+    }
+  }
+  
+  else {
+    await ctx.reply(`
+📋 Copy Trading Commands:
+
+/copytrade setup <account> <wallet> <amount> [slippage]
+   Setup copy trading for a wallet
+
+/copytrade status <account>
+   Check copy trading status
+
+/copytrade stop <config_id>
+   Stop copy trading configuration
+
+/alerts copy <account>
+   View copy trading alerts
+    `);
+  }
+});
+
+// Alerts Command
+bot.command('alerts', async (ctx) => {
+  const args = ctx.message.text.split(' ');
+  const alertType = args[1];
+  const accountName = args[2];
+  
+  if (alertType === 'copy') {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/alerts?accountName=${accountName}&alertType=copy`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const alerts = data.data.copyTradingAlerts;
+        
+        let alertMessage = `🔔 Copy Trading Alerts for ${accountName}\n\n`;
+        
+        if (alerts.length > 0) {
+          alertMessage += `Recent Alerts (Last 24 hours):\n`;
+          alerts.slice(0, 5).forEach(alert => {
+            const timeAgo = getTimeAgo(alert.createdAt * 1000);
+            alertMessage += `• ${timeAgo}: ${alert.alertType} for ${alert.tokenSymbol || 'Unknown Token'}\n`;
+          });
+        } else {
+          alertMessage += `No recent alerts found.`;
+        }
+        
+        await ctx.reply(alertMessage);
+      } else {
+        await ctx.reply(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      await ctx.reply(`❌ Failed to get alerts: ${error.message}`);
+    }
+  }
+});
+
+// Helper function to format time ago
+function getTimeAgo(timestamp) {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  
+  if (minutes < 60) {
+    return `${minutes} minutes ago`;
+  } else {
+    return `${hours} hours ago`;
+  }
+}
+```
+
+## Error Handling
+
+Your bot should handle these common errors gracefully:
+
+```javascript
+// Error handling for copy trading
+function handleCopyTradingError(error) {
+  if (error.message.includes('Insufficient ETH balance')) {
+    return '❌ Insufficient ETH balance. Please add more ETH to your account.';
+  }
+  
+  if (error.message.includes('Invalid wallet address')) {
+    return '❌ Invalid wallet address format. Please use a valid 0x address.';
+  }
+  
+  if (error.message.includes('Account not found')) {
+    return '❌ Account not found. Please create an account first.';
+  }
+  
+  return `❌ Error: ${error.message}`;
+}
+```
+
+## User Experience Tips
+
+1. **Clear Instructions**: Always provide clear examples of how to use commands
+2. **Confirmation Messages**: Show success/error messages for all actions
+3. **Progress Updates**: For long-running operations, show progress
+4. **Help Commands**: Provide `/help` or `/start` commands with usage examples
+5. **Inline Keyboards**: Use Telegram's inline keyboards for better UX
+
+## Security Considerations
+
+1. **Input Validation**: Validate all user inputs before sending to API
+2. **Rate Limiting**: Implement rate limiting to prevent spam
+3. **User Authentication**: Ensure only authorized users can access copy trading
+4. **Error Logging**: Log errors for debugging while keeping user messages clean
+
+## Testing Your Integration
+
+Test your bot with these scenarios:
+
+1. **Happy Path**: Setup → Status → Stop
+2. **Error Cases**: Invalid wallet, insufficient balance, account not found
+3. **Edge Cases**: Very large amounts, invalid slippage values
+4. **Concurrent Operations**: Multiple users using the bot simultaneously
+
+This integration provides a complete copy trading experience through your Telegram bot with automatic alert creation and clear user feedback. 

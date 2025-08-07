@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { MonitoringService, DepositEvent, CopyTradeEvent } from '../services/monitoringService.js';
-import { ApiResponse, Position } from '../types/index.js';
+import { MonitoringService, DepositEvent } from '../services/monitoringService.js';
+import { CopyTradingService } from '../services/copyTradingService.js';
+import { ApiResponse, Position, CopyTradeConfig, CopyTradeEvent } from '../types/index.js';
 
 const router = Router();
 let monitoringService: MonitoringService | null = null;
@@ -107,7 +108,7 @@ router.post('/deposits', async (req: Request, res: Response) => {
  * @swagger
  * /api/monitoring/copy-trading:
  *   post:
- *     summary: Monitor a wallet for copy trading opportunities
+ *     summary: Monitor a wallet for copy trading opportunities and execute copy trades
  *     tags: [Monitoring]
  *     requestBody:
  *       required: true
@@ -117,13 +118,24 @@ router.post('/deposits', async (req: Request, res: Response) => {
  *             type: object
  *             required:
  *               - walletAddress
+ *               - accountName
+ *               - delegationAmount
  *             properties:
  *               walletAddress:
  *                 type: string
  *                 description: The wallet address to monitor for trading activities
+ *               accountName:
+ *                 type: string
+ *                 description: The account name to use for copy trading
+ *               delegationAmount:
+ *                 type: string
+ *                 description: Amount of ETH to delegate for copy trading
+ *               maxSlippage:
+ *                 type: number
+ *                 description: Maximum slippage percentage (default 0.05 for 5%)
  *     responses:
  *       200:
- *         description: Copy trading events found
+ *         description: Copy trading events found and executed
  *         content:
  *           application/json:
  *             schema:
@@ -136,16 +148,30 @@ router.post('/deposits', async (req: Request, res: Response) => {
  *                   items:
  *                     type: object
  *                     properties:
- *                       walletAddress:
+ *                       id:
+ *                         type: string
+ *                       configId:
+ *                         type: string
+ *                       accountName:
+ *                         type: string
+ *                       targetWalletAddress:
+ *                         type: string
+ *                       tokenAddress:
+ *                         type: string
+ *                       tokenSymbol:
+ *                         type: string
+ *                       tokenName:
+ *                         type: string
+ *                       originalAmount:
+ *                         type: string
+ *                       copiedAmount:
  *                         type: string
  *                       transactionHash:
  *                         type: string
- *                       method:
- *                         type: string
- *                       params:
- *                         type: object
  *                       timestamp:
  *                         type: number
+ *                       status:
+ *                         type: string
  *       400:
  *         description: Bad request
  *       500:
@@ -153,12 +179,12 @@ router.post('/deposits', async (req: Request, res: Response) => {
  */
 router.post('/copy-trading', async (req: Request, res: Response) => {
   try {
-    const { walletAddress } = req.body;
+    const { walletAddress, accountName, delegationAmount, maxSlippage = 0.05 } = req.body;
 
-    if (!walletAddress) {
+    if (!walletAddress || !accountName || !delegationAmount) {
       return res.status(400).json({
         success: false,
-        error: 'walletAddress is required'
+        error: 'walletAddress, accountName, and delegationAmount are required'
       } as ApiResponse);
     }
 
@@ -170,12 +196,33 @@ router.post('/copy-trading', async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    const copyTradeEvents = await getMonitoringService().monitorCopyTrading(walletAddress);
+    // Validate delegation amount
+    if (isNaN(parseFloat(delegationAmount)) || parseFloat(delegationAmount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid delegation amount'
+      } as ApiResponse);
+    }
+
+    // Create copy trading configuration
+    const copyTradingService = CopyTradingService.getInstance();
+    const config = await copyTradingService.createCopyTradeConfig(
+      accountName,
+      walletAddress,
+      delegationAmount,
+      maxSlippage
+    );
+
+    // Monitor and execute copy trades
+    const copyTradeEvents = await copyTradingService.monitorAndExecuteCopyTrades(walletAddress);
     
-    const response: ApiResponse<CopyTradeEvent[]> = {
+    const response: ApiResponse<{ config: CopyTradeConfig; events: CopyTradeEvent[] }> = {
       success: true,
-      data: copyTradeEvents,
-      message: `Found ${copyTradeEvents.length} copy trading events for wallet ${walletAddress}`
+      data: {
+        config,
+        events: copyTradeEvents
+      },
+      message: `Copy trading setup complete. Found ${copyTradeEvents.length} buy transactions to copy.`
     };
 
     res.json(response);
@@ -183,7 +230,250 @@ router.post('/copy-trading', async (req: Request, res: Response) => {
     console.error('Error in copy trading monitoring:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to monitor copy trading'
+      error: (error as Error).message || 'Failed to monitor copy trading'
+    } as ApiResponse);
+  }
+});
+
+/**
+ * @swagger
+ * /api/monitoring/copy-trading/configs:
+ *   get:
+ *     summary: Get copy trading configurations for an account
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: query
+ *         name: accountName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The account name to get configurations for
+ *     responses:
+ *       200:
+ *         description: Copy trading configurations retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/CopyTradeConfig"
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/copy-trading/configs', async (req: Request, res: Response) => {
+  try {
+    const { accountName } = req.query;
+
+    if (!accountName) {
+      return res.status(400).json({
+        success: false,
+        error: 'accountName is required'
+      } as ApiResponse);
+    }
+
+    const copyTradingService = CopyTradingService.getInstance();
+    const configs = await copyTradingService.getCopyTradeConfigs(accountName as string);
+    
+    const response: ApiResponse<CopyTradeConfig[]> = {
+      success: true,
+      data: configs,
+      message: `Found ${configs.length} copy trading configurations for account ${accountName}`
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting copy trading configs:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message || 'Failed to get copy trading configurations'
+    } as ApiResponse);
+  }
+});
+
+/**
+ * @swagger
+ * /api/monitoring/copy-trading/events:
+ *   get:
+ *     summary: Get copy trading events for an account
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: query
+ *         name: accountName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The account name to get events for
+ *     responses:
+ *       200:
+ *         description: Copy trading events retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/CopyTradeEvent"
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/copy-trading/events', async (req: Request, res: Response) => {
+  try {
+    const { accountName } = req.query;
+
+    if (!accountName) {
+      return res.status(400).json({
+        success: false,
+        error: 'accountName is required'
+      } as ApiResponse);
+    }
+
+    const copyTradingService = CopyTradingService.getInstance();
+    const events = await copyTradingService.getCopyTradeEvents(accountName as string);
+    
+    const response: ApiResponse<CopyTradeEvent[]> = {
+      success: true,
+      data: events,
+      message: `Found ${events.length} copy trading events for account ${accountName}`
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting copy trading events:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message || 'Failed to get copy trading events'
+    } as ApiResponse);
+  }
+});
+
+/**
+ * @swagger
+ * /api/monitoring/copy-trading/configs/{configId}:
+ *   put:
+ *     summary: Update copy trading configuration
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: path
+ *         name: configId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The configuration ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               delegationAmount:
+ *                 type: string
+ *               maxSlippage:
+ *                 type: number
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Configuration updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: "#/components/schemas/CopyTradeConfig"
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/copy-trading/configs/:configId', async (req: Request, res: Response) => {
+  try {
+    const { configId } = req.params;
+    const updates = req.body;
+
+    const copyTradingService = CopyTradingService.getInstance();
+    const updatedConfig = await copyTradingService.updateCopyTradeConfig(configId, updates);
+    
+    const response: ApiResponse<CopyTradeConfig> = {
+      success: true,
+      data: updatedConfig,
+      message: 'Copy trading configuration updated successfully'
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error updating copy trading config:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message || 'Failed to update copy trading configuration'
+    } as ApiResponse);
+  }
+});
+
+/**
+ * @swagger
+ * /api/monitoring/copy-trading/configs/{configId}:
+ *   delete:
+ *     summary: Delete copy trading configuration
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: path
+ *         name: configId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The configuration ID to delete
+ *     responses:
+ *       200:
+ *         description: Configuration deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/copy-trading/configs/:configId', async (req: Request, res: Response) => {
+  try {
+    const { configId } = req.params;
+
+    const copyTradingService = CopyTradingService.getInstance();
+    await copyTradingService.deleteCopyTradeConfig(configId);
+    
+    const response: ApiResponse = {
+      success: true,
+      message: 'Copy trading configuration deleted successfully'
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error deleting copy trading config:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message || 'Failed to delete copy trading configuration'
     } as ApiResponse);
   }
 });

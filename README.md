@@ -14,10 +14,26 @@ Interactive API documentation is available at:
 Example: `https://usezoracle-telegrambot-production.up.railway.app/api-docs`
 
 ## Overview
-This API provides endpoints for managing Coinbase Developer Platform (CDP) accounts, transactions, and balances.
+This API provides endpoints for managing Coinbase Developer Platform (CDP) accounts, transactions, balances, and copy trading functionality.
 
 ## Authentication
 All endpoints require proper CDP API credentials configured on the server.
+
+## Features
+
+### Core Features
+- **Account Management**: Create and manage CDP accounts
+- **Balance Tracking**: Monitor token balances across accounts
+- **Transaction Execution**: Send transactions securely via CDP
+- **Position Management**: Track trading positions and performance
+- **Alert System**: Set up price, portfolio, and trade alerts
+
+### Copy Trading (NEW)
+- **Automated Copy Trading**: Monitor wallets and automatically copy their buy transactions
+- **Delegation Control**: Set maximum amounts to delegate for copy trading
+- **Risk Management**: Configurable slippage limits and position sizing
+- **Performance Tracking**: Monitor copy trading performance and history
+- **Buy-Only Strategy**: Only copies buy transactions (no sells)
 
 ## Endpoints
 
@@ -33,6 +49,67 @@ Check if the server is running.
   "timestamp": "2025-07-31T05:37:31.153Z"
 }
 ```
+
+---
+
+### Copy Trading
+
+#### Setup Copy Trading
+**POST** `/api/monitoring/copy-trading`
+
+Monitor a wallet for copy trading opportunities and execute copy trades.
+
+**Request Body:**
+```json
+{
+  "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+  "accountName": "myWallet",
+  "delegationAmount": "0.5",
+  "maxSlippage": 0.05
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "config": {
+      "id": "copy_1703123456789_abc123def",
+      "accountName": "myWallet",
+      "targetWalletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+      "delegationAmount": "0.5",
+      "maxSlippage": 0.05,
+      "isActive": true,
+      "createdAt": 1703123456,
+      "totalExecutedTrades": 0,
+      "totalSpent": "0"
+    },
+    "events": []
+  },
+  "message": "Copy trading setup complete. Found 0 buy transactions to copy."
+}
+```
+
+#### Get Copy Trading Configurations
+**GET** `/api/monitoring/copy-trading/configs?accountName=myWallet`
+
+Get all copy trading configurations for an account.
+
+#### Get Copy Trading Events
+**GET** `/api/monitoring/copy-trading/events?accountName=myWallet`
+
+Get copy trading events for an account.
+
+#### Update Copy Trading Configuration
+**PUT** `/api/monitoring/copy-trading/configs/{configId}`
+
+Update a copy trading configuration.
+
+#### Delete Copy Trading Configuration
+**DELETE** `/api/monitoring/copy-trading/configs/{configId}`
+
+Delete a copy trading configuration.
 
 ---
 
