@@ -4,33 +4,32 @@ import { CdpService } from "../services/cdpService.js";
 const router = Router();
 const cdpService = CdpService.getInstance();
 
-/**
- * @route GET /api/tokens/{contractAddress}
- * @description Get token information by contract address
- */
 router.get("/:contractAddress", async (req, res, next) => {
   try {
     const { contractAddress } = req.params;
-    const { network = "base" } = req.query as { network?: string };
+    const { network } = req.query as any;
 
-    // Validate network
-    if (!["base", "base-sepolia", "ethereum"].includes(network)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid network. Supported networks: base, base-sepolia, ethereum"
-      });
-    }
+    const result = await cdpService.getTokenInfo(
+      contractAddress as `0x${string}`,
+      network || "base"
+    );
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
-    // Validate contract address format
-    const tokenAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-    if (!tokenAddressRegex.test(contractAddress)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid contract address format"
-      });
-    }
+/**
+ * @route GET /api/tokens/test/:contractAddress
+ * @description Test token metadata fetching for any token address
+ */
+router.get("/test/:contractAddress", async (req, res, next) => {
+  try {
+    const { contractAddress } = req.params;
 
-    const result = await cdpService.getTokenInfo(contractAddress as `0x${string}`, network as "base" | "base-sepolia" | "ethereum");
+    const result = await cdpService.testTokenMetadata(
+      contractAddress as `0x${string}`
+    );
     res.json(result);
   } catch (error) {
     next(error);

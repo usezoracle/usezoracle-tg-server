@@ -1,0 +1,460 @@
+# Alerts API
+
+The Alerts API provides comprehensive notification capabilities for various trading and market events. Users can set up alerts for price movements, portfolio changes, trade activities, market opportunities, and copy trading activities.
+
+## Overview
+
+The alerts system supports five main categories of alerts:
+
+- **Price Alerts**: Notify when tokens reach specific price levels
+- **Portfolio Alerts**: Monitor portfolio value changes and PnL thresholds
+- **Trade Alerts**: Track successful trades, failed transactions, and large trades
+- **Market Alerts**: Monitor market movements and opportunities
+- **Copy Trading Alerts**: Track activities of specific wallets for copy trading
+
+## Alert Types
+
+### Price Alerts
+Monitor token prices and get notified when they reach target levels.
+
+**Trigger Conditions:**
+- Price goes above a specified target
+- Price goes below a specified target
+
+### Portfolio Alerts
+Track portfolio performance and value changes.
+
+**Alert Types:**
+- `value_increase`: Portfolio value increases above threshold
+- `value_decrease`: Portfolio value decreases below threshold
+- `pnl_threshold`: Profit/Loss reaches specific threshold
+
+### Trade Alerts
+Monitor trading activities and transaction status.
+
+**Alert Types:**
+- `successful_trade`: Trade executes successfully
+- `failed_transaction`: Transaction fails
+- `large_trade`: Trade amount exceeds threshold
+
+### Market Alerts
+Track market movements and opportunities.
+
+**Alert Types:**
+- `price_spike`: Token price spikes above threshold
+- `volume_surge`: Trading volume surges above threshold
+- `market_opportunity`: Market conditions meet criteria
+
+### Copy Trading Alerts
+Monitor specific wallets for copy trading opportunities.
+
+**Alert Types:**
+- `wallet_activity`: Any activity in monitored wallet
+- `large_transaction`: Large transaction detected
+- `new_token_purchase`: New token purchase detected
+
+## Endpoints
+
+### Get All Alerts
+
+Retrieve all alerts with optional filtering.
+
+```http
+GET /api/alerts
+```
+
+**Query Parameters:**
+- `accountName` (optional): Filter by account name
+- `alertType` (optional): Filter by alert type (`price`, `portfolio`, `trade`, `market`, `copy`)
+
+**Example Request:**
+```bash
+curl -X GET "http://localhost:3000/api/alerts"
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "message": "Successfully retrieved alerts (3 active)",
+  "data": {
+    "priceAlerts": [
+      {
+        "id": "price-Bright-0x4200000000000000000000000000000000000006-1703123456789",
+        "accountName": "Bright",
+        "tokenAddress": "0x4200000000000000000000000000000000000006",
+        "tokenSymbol": "WETH",
+        "tokenName": "Wrapped Ether",
+        "targetPrice": "2500.00",
+        "condition": "above",
+        "isActive": true,
+        "createdAt": 1703123456
+      }
+    ],
+    "portfolioAlerts": [],
+    "tradeAlerts": [],
+    "marketAlerts": [],
+    "copyTradingAlerts": [],
+    "summary": {
+      "totalPriceAlerts": 1,
+      "totalPortfolioAlerts": 0,
+      "totalTradeAlerts": 0,
+      "totalMarketAlerts": 0,
+      "totalCopyTradingAlerts": 0,
+      "activeAlerts": 1
+    }
+  }
+}
+```
+
+### Create Price Alert
+
+Create an alert that triggers when a token reaches a certain price.
+
+```http
+POST /api/alerts/price
+```
+
+**Request Body:**
+```json
+{
+  "accountName": "Bright",
+  "tokenAddress": "0x4200000000000000000000000000000000000006",
+  "targetPrice": "2500.00",
+  "condition": "above"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:3000/api/alerts/price" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountName": "Bright",
+    "tokenAddress": "0x4200000000000000000000000000000000000006",
+    "targetPrice": "2500.00",
+    "condition": "above"
+  }'
+```
+
+### Create Portfolio Alert
+
+Create an alert for portfolio value changes.
+
+```http
+POST /api/alerts/portfolio
+```
+
+**Request Body:**
+```json
+{
+  "accountName": "Bright",
+  "alertType": "value_increase",
+  "threshold": "1000.00",
+  "condition": "above"
+}
+```
+
+**Alert Types:**
+- `value_increase`: Portfolio value increases
+- `value_decrease`: Portfolio value decreases
+- `pnl_threshold`: Profit/Loss threshold
+
+### Create Trade Alert
+
+Create an alert for trade-related events.
+
+```http
+POST /api/alerts/trade
+```
+
+**Request Body:**
+```json
+{
+  "accountName": "Bright",
+  "alertType": "large_trade",
+  "tokenAddress": "0x4200000000000000000000000000000000000006",
+  "amount": "0.5"
+}
+```
+
+**Alert Types:**
+- `successful_trade`: Trade executes successfully
+- `failed_transaction`: Transaction fails
+- `large_trade`: Trade amount exceeds threshold
+
+### Create Market Alert
+
+Create an alert for market-related events.
+
+```http
+POST /api/alerts/market
+```
+
+**Request Body:**
+```json
+{
+  "alertType": "price_spike",
+  "threshold": "100.00",
+  "condition": "above",
+  "tokenAddress": "0x4200000000000000000000000000000000000006"
+}
+```
+
+**Alert Types:**
+- `price_spike`: Token price spikes
+- `volume_surge`: Trading volume surges
+- `market_opportunity`: Market opportunity detected
+
+### Create Copy Trading Alert
+
+Create an alert for copy trading activities.
+
+```http
+POST /api/alerts/copy-trading
+```
+
+**Request Body:**
+```json
+{
+  "accountName": "Bright",
+  "alertType": "wallet_activity",
+  "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+  "tokenAddress": "0x4200000000000000000000000000000000000006",
+  "amount": "0.1"
+}
+```
+
+**Alert Types:**
+- `wallet_activity`: Any activity in monitored wallet
+- `large_transaction`: Large transaction detected
+- `new_token_purchase`: New token purchase detected
+
+### Delete Alert
+
+Delete a specific alert by ID.
+
+```http
+DELETE /api/alerts/{alertId}
+```
+
+**Example Request:**
+```bash
+curl -X DELETE "http://localhost:3000/api/alerts/price-Bright-0x4200000000000000000000000000000000000006-1703123456789"
+```
+
+### Check Alerts
+
+Manually check and trigger all active alerts.
+
+```http
+POST /api/alerts/check
+```
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:3000/api/alerts/check"
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "message": "Checked alerts: 2 triggered",
+  "data": {
+    "priceAlerts": [
+      {
+        "id": "price-Bright-0x4200000000000000000000000000000000000006-1703123456789",
+        "tokenSymbol": "WETH",
+        "condition": "above",
+        "targetPrice": "2500.00",
+        "triggeredPrice": "2550.00",
+        "triggeredAt": 1703124000
+      }
+    ],
+    "portfolioAlerts": [],
+    "totalTriggered": 1
+  }
+}
+```
+
+## Alert Lifecycle
+
+1. **Created**: Alert is created and becomes active
+2. **Monitoring**: System continuously monitors conditions
+3. **Triggered**: Alert conditions are met, alert is triggered
+4. **Inactive**: Alert becomes inactive after triggering
+5. **Deleted**: Alert can be manually deleted
+
+## Data Models
+
+### Price Alert
+```typescript
+interface PriceAlert {
+  id: string;
+  accountName: string;
+  tokenAddress: string;
+  tokenSymbol: string;
+  tokenName: string;
+  targetPrice: string;
+  condition: 'above' | 'below';
+  isActive: boolean;
+  createdAt: number;
+  triggeredAt?: number;
+  triggeredPrice?: string;
+}
+```
+
+### Portfolio Alert
+```typescript
+interface PortfolioAlert {
+  id: string;
+  accountName: string;
+  alertType: 'value_increase' | 'value_decrease' | 'pnl_threshold';
+  threshold: string;
+  condition: 'above' | 'below';
+  isActive: boolean;
+  createdAt: number;
+  triggeredAt?: number;
+  triggeredValue?: string;
+}
+```
+
+### Trade Alert
+```typescript
+interface TradeAlert {
+  id: string;
+  accountName: string;
+  alertType: 'successful_trade' | 'failed_transaction' | 'large_trade';
+  tokenAddress?: string;
+  tokenSymbol?: string;
+  amount?: string;
+  transactionHash?: string;
+  isActive: boolean;
+  createdAt: number;
+  triggeredAt?: number;
+}
+```
+
+### Market Alert
+```typescript
+interface MarketAlert {
+  id: string;
+  alertType: 'price_spike' | 'volume_surge' | 'market_opportunity';
+  tokenAddress?: string;
+  tokenSymbol?: string;
+  threshold: string;
+  condition: 'above' | 'below';
+  isActive: boolean;
+  createdAt: number;
+  triggeredAt?: number;
+  triggeredValue?: string;
+}
+```
+
+### Copy Trading Alert
+```typescript
+interface CopyTradingAlert {
+  id: string;
+  accountName: string;
+  alertType: 'wallet_activity' | 'large_transaction' | 'new_token_purchase';
+  walletAddress: string;
+  tokenAddress?: string;
+  tokenSymbol?: string;
+  amount?: string;
+  transactionHash?: string;
+  isActive: boolean;
+  createdAt: number;
+  triggeredAt?: number;
+}
+```
+
+## Integration with Other Services
+
+### Automatic Trade Alerts
+When a snipe transaction is executed, a trade alert is automatically created:
+- **Type**: `successful_trade`
+- **Account**: The account used for the snipe
+- **Token**: The token that was sniped
+- **Amount**: The amount spent on the snipe
+
+### Portfolio Integration
+Portfolio alerts integrate with the positions service to:
+- Calculate current portfolio value
+- Monitor PnL changes
+- Track value increases/decreases
+
+### Price Monitoring
+Price alerts continuously monitor token prices and:
+- Check current prices against targets
+- Trigger alerts when conditions are met
+- Update alert status automatically
+
+## Error Handling
+
+The API returns appropriate HTTP status codes:
+
+- `200`: Success
+- `400`: Bad request (invalid parameters)
+- `404`: Alert not found
+- `500`: Internal server error
+
+Error responses follow this format:
+
+```json
+{
+  "success": false,
+  "error": "Error message"
+}
+```
+
+## Best Practices
+
+1. **Set Realistic Targets**: Use realistic price targets and thresholds
+2. **Monitor Alert Volume**: Avoid creating too many alerts to prevent notification fatigue
+3. **Regular Cleanup**: Delete old or triggered alerts to keep the system organized
+4. **Test Alerts**: Use the check endpoint to test alert conditions
+5. **Account-Specific Alerts**: Use account filtering to organize alerts by trading account
+
+## Use Cases
+
+### Price Monitoring
+```bash
+# Alert when WETH goes above $2500
+curl -X POST "http://localhost:3000/api/alerts/price" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountName": "Bright",
+    "tokenAddress": "0x4200000000000000000000000000000000000006",
+    "targetPrice": "2500.00",
+    "condition": "above"
+  }'
+```
+
+### Portfolio Protection
+```bash
+# Alert when portfolio value drops below $500
+curl -X POST "http://localhost:3000/api/alerts/portfolio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountName": "Bright",
+    "alertType": "value_decrease",
+    "threshold": "500.00",
+    "condition": "below"
+  }'
+```
+
+### Copy Trading Setup
+```bash
+# Monitor a whale wallet for large transactions
+curl -X POST "http://localhost:3000/api/alerts/copy-trading" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountName": "Bright",
+    "alertType": "large_transaction",
+    "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+    "amount": "1.0"
+  }'
+```
+
+The alerts system provides comprehensive monitoring capabilities to help users stay informed about important trading and market events! 🚨 

@@ -1,6 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
 import { join } from "path";
@@ -9,9 +11,12 @@ import { accountRoutes } from "./routes/accountRoutes.js";
 import { transactionRoutes } from "./routes/transactionRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { balanceRoutes } from "./routes/balanceRoutes.js";
-import swapRoutes from "./routes/swapRoutes.js";
+import { swapRoutes } from "./routes/swapRoutes.js";
 import { tokenRoutes } from "./routes/tokenRoutes.js";
-dotenv.config();
+import { monitoringRoutes } from "./routes/monitoringRoutes.js";
+import { snipeRoutes } from "./routes/snipeRoutes.js";
+import { positionRoutes } from "./routes/positionRoutes.js";
+import { alertRoutes } from "./routes/alertRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,6 +53,10 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/balances", balanceRoutes);
 app.use("/api/swaps", swapRoutes);
 app.use("/api/tokens", tokenRoutes);
+app.use("/api/monitoring", monitoringRoutes);
+app.use("/api/snipe", snipeRoutes);
+app.use("/api/positions", positionRoutes);
+app.use("/api/alerts", alertRoutes);
 
 // Error handling
 app.use(errorHandler);
