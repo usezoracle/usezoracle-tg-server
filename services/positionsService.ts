@@ -8,6 +8,12 @@ export class PositionsService {
   private positions: Map<string, Position> = new Map();
   private baseChainId = 8453; // Base mainnet
   private storageFile = 'positions.json';
+  
+  // Configuration for blockchain scanning
+  private readonly SCAN_BLOCKS = 1000; // Number of blocks to scan (reduced from 10000)
+  private readonly CHUNK_SIZE = 100; // Number of blocks per chunk
+  private readonly FALLBACK_BLOCKS = 100; // Very conservative fallback
+  private readonly CHUNK_DELAY = 100; // Delay between chunks in ms
 
   constructor() {
     const providerUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
@@ -57,6 +63,7 @@ export class PositionsService {
 
   /**
    * Fetch positions from blockchain transactions for a specific account
+   * Uses chunked approach to avoid "Block range is too large" errors
    */
   async fetchPositionsFromBlockchain(accountName: string): Promise<Position[]> {
     try {
@@ -73,49 +80,76 @@ export class PositionsService {
       
       // Get recent transactions for this account
       const latestBlock = await this.provider.getBlockNumber();
-      const fromBlock = latestBlock - 10000; // Scan last 10,000 blocks
+      const fromBlock = Math.max(0, latestBlock - this.SCAN_BLOCKS);
+      
+      console.log(`📊 Scanning blocks ${fromBlock} to ${latestBlock} (${this.SCAN_BLOCKS} blocks)`);
       
       const positions: Position[] = [];
       
-      // Scan for token purchase transactions
-      const logs = await this.provider.getLogs({
-        fromBlock: fromBlock,
-        toBlock: 'latest',
-        address: accountAddress
-      });
+      // Use chunked approach to avoid "Block range is too large" errors
+      const chunks = Math.ceil((latestBlock - fromBlock) / this.CHUNK_SIZE);
       
-      for (const log of logs) {
+              for (let i = 0; i < chunks; i++) {
+          const chunkFromBlock = fromBlock + (i * this.CHUNK_SIZE);
+          const chunkToBlock = Math.min(chunkFromBlock + this.CHUNK_SIZE - 1, latestBlock);
+        
         try {
-          const transaction = await this.provider.getTransaction(log.transactionHash!);
-          const block = await this.provider.getBlock(log.blockNumber!);
+          console.log(`📦 Processing chunk ${i + 1}/${chunks}: blocks ${chunkFromBlock}-${chunkToBlock}`);
           
-          if (transaction && block && transaction.value > 0) {
-            // This is a token purchase transaction
-            const tokenAddress = transaction.to!;
-            const tokenInfo = await this.getTokenInfo(tokenAddress);
-            const entryPrice = await this.getTokenPrice(tokenAddress);
-            
-            const positionId = `${accountName}-${tokenAddress}-${block.timestamp}`;
-            
-            const position: Position = {
-              id: positionId,
-              accountName,
-              tokenAddress,
-              tokenSymbol: tokenInfo.symbol,
-              tokenName: tokenInfo.name,
-              amount: ethers.formatEther(transaction.value),
-              entryPrice,
-              status: 'open',
-              transactionHash: log.transactionHash!,
-              timestamp: Number(block.timestamp)
-            };
-            
-            positions.push(position);
-            this.positions.set(positionId, position);
+          // Scan for token purchase transactions in this chunk
+          const logs = await this.provider.getLogs({
+            fromBlock: chunkFromBlock,
+            toBlock: chunkToBlock,
+            address: accountAddress
+          });
+          
+          console.log(`🔍 Found ${logs.length} logs in chunk ${i + 1}`);
+          
+          for (const log of logs) {
+            try {
+              const transaction = await this.provider.getTransaction(log.transactionHash!);
+              const block = await this.provider.getBlock(log.blockNumber!);
+              
+              if (transaction && block && transaction.value > 0) {
+                // This is a token purchase transaction
+                const tokenAddress = transaction.to!;
+                const tokenInfo = await this.getTokenInfo(tokenAddress);
+                const entryPrice = await this.getTokenPrice(tokenAddress);
+                
+                const positionId = `${accountName}-${tokenAddress}-${block.timestamp}`;
+                
+                const position: Position = {
+                  id: positionId,
+                  accountName,
+                  tokenAddress,
+                  tokenSymbol: tokenInfo.symbol,
+                  tokenName: tokenInfo.name,
+                  amount: ethers.formatEther(transaction.value),
+                  entryPrice,
+                  status: 'open',
+                  transactionHash: log.transactionHash!,
+                  timestamp: Number(block.timestamp)
+                };
+                
+                positions.push(position);
+                this.positions.set(positionId, position);
+                
+                console.log(`✅ Found position: ${tokenInfo.symbol} - ${ethers.formatEther(transaction.value)} tokens`);
+              }
+            } catch (error) {
+              console.log(`⚠️ Error processing transaction ${log.transactionHash}:`, (error as Error).message);
+              continue;
+            }
           }
+          
+          // Add a small delay between chunks to avoid rate limiting
+          if (i < chunks - 1) {
+            await new Promise(resolve => setTimeout(resolve, this.CHUNK_DELAY));
+          }
+          
         } catch (error) {
-          console.log(`⚠️ Error processing transaction ${log.transactionHash}:`, (error as Error).message);
-          continue;
+          console.log(`⚠️ Error processing chunk ${i + 1}:`, (error as Error).message);
+          continue; // Continue with next chunk even if this one fails
         }
       }
       
@@ -125,7 +159,91 @@ export class PositionsService {
       return positions;
     } catch (error) {
       console.error('Error fetching positions from blockchain:', error);
-      throw error;
+      
+      // If chunked approach fails, try a more conservative approach
+      console.log('🔄 Trying fallback approach with smaller block range...');
+      return this.fetchPositionsFromBlockchainFallback(accountName);
+    }
+  }
+
+  /**
+   * Fallback method for fetching positions with very conservative block range
+   */
+  private async fetchPositionsFromBlockchainFallback(accountName: string): Promise<Position[]> {
+    try {
+      console.log(`🔄 Using fallback method for account: ${accountName}`);
+      
+      // Get account address from CDP service
+      const { CdpService } = await import('./cdpService.js');
+      const cdpService = CdpService.getInstance();
+      
+      const account = await cdpService.getAccount(accountName);
+      const accountAddress = account.data.address;
+      
+      const latestBlock = await this.provider.getBlockNumber();
+      const fromBlock = Math.max(0, latestBlock - this.FALLBACK_BLOCKS);
+      
+      console.log(`📊 Fallback: Scanning blocks ${fromBlock} to ${latestBlock} (${this.FALLBACK_BLOCKS} blocks)`);
+      
+      const positions: Position[] = [];
+      
+      try {
+        // Try with a very small block range
+        const logs = await this.provider.getLogs({
+          fromBlock: fromBlock,
+          toBlock: latestBlock,
+          address: accountAddress
+        });
+        
+        console.log(`🔍 Found ${logs.length} logs in fallback scan`);
+        
+        for (const log of logs) {
+          try {
+            const transaction = await this.provider.getTransaction(log.transactionHash!);
+            const block = await this.provider.getBlock(log.blockNumber!);
+            
+            if (transaction && block && transaction.value > 0) {
+              const tokenAddress = transaction.to!;
+              const tokenInfo = await this.getTokenInfo(tokenAddress);
+              const entryPrice = await this.getTokenPrice(tokenAddress);
+              
+              const positionId = `${accountName}-${tokenAddress}-${block.timestamp}`;
+              
+              const position: Position = {
+                id: positionId,
+                accountName,
+                tokenAddress,
+                tokenSymbol: tokenInfo.symbol,
+                tokenName: tokenInfo.name,
+                amount: ethers.formatEther(transaction.value),
+                entryPrice,
+                status: 'open',
+                transactionHash: log.transactionHash!,
+                timestamp: Number(block.timestamp)
+              };
+              
+              positions.push(position);
+              this.positions.set(positionId, position);
+              
+              console.log(`✅ Found position: ${tokenInfo.symbol} - ${ethers.formatEther(transaction.value)} tokens`);
+            }
+          } catch (error) {
+            console.log(`⚠️ Error processing transaction ${log.transactionHash}:`, (error as Error).message);
+            continue;
+          }
+        }
+      } catch (error) {
+        console.log(`⚠️ Fallback method also failed:`, (error as Error).message);
+        console.log(`📝 Returning empty positions array - will rely on CDP service data`);
+      }
+      
+      console.log(`✅ Fallback: Found ${positions.length} positions for ${accountName}`);
+      await this.savePositionsToStorage();
+      
+      return positions;
+    } catch (error) {
+      console.error('Error in fallback method:', error);
+      return []; // Return empty array if everything fails
     }
   }
 
