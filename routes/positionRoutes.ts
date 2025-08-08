@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
+
 import { PositionsService } from '../services/positionsService.js';
 import { ApiResponse, PositionsResponse, Position } from '../types/index.js';
+import { validateParams, validateQuery, accountNameParamSchema, positionIdParamSchema, statusParamSchema } from '../middleware/requestValidation.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 let positionsService: PositionsService | null = null;
@@ -43,7 +46,7 @@ function getPositionsService(): PositionsService {
  *       500:
  *         description: Internal server error
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', validateQuery(statusParamSchema.partial().extend({ accountName: (accountNameParamSchema.shape as any).accountName.optional() })), async (req: Request, res: Response) => {
   try {
     const { accountName, status } = req.query;
     
@@ -60,7 +63,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting positions:', error);
+    logger.error({ err: error }, 'Error getting positions');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get positions'
@@ -95,9 +98,9 @@ router.get('/', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/:positionId', async (req: Request, res: Response) => {
+router.get('/:positionId', validateParams(positionIdParamSchema), async (req: Request, res: Response) => {
   try {
-    const { positionId } = req.params;
+    const positionId = req.params.positionId as string;
     
     const position = await getPositionsService().getPosition(positionId);
     
@@ -116,7 +119,7 @@ router.get('/:positionId', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting position:', error);
+    logger.error({ err: error }, 'Error getting position');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get position'
@@ -149,9 +152,9 @@ router.get('/:positionId', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/account/:accountName', async (req: Request, res: Response) => {
+router.get('/account/:accountName', validateParams(accountNameParamSchema), async (req: Request, res: Response) => {
   try {
-    const { accountName } = req.params;
+    const accountName = req.params.accountName as string;
     
     const positions = await getPositionsService().getPositionsByAccount(accountName);
     
@@ -163,7 +166,7 @@ router.get('/account/:accountName', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting positions by account:', error);
+    logger.error({ err: error }, 'Error getting positions by account');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get positions by account'
@@ -201,9 +204,9 @@ router.get('/account/:accountName', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/status/:status', async (req: Request, res: Response) => {
+router.get('/status/:status', validateParams(statusParamSchema), async (req: Request, res: Response) => {
   try {
-    const { status } = req.params;
+    const status = req.params.status as 'open' | 'closed' | 'pending' | string;
     
     if (!['open', 'closed', 'pending'].includes(status)) {
       return res.status(400).json({
@@ -222,7 +225,7 @@ router.get('/status/:status', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting positions by status:', error);
+    logger.error({ err: error }, 'Error getting positions by status');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get positions by status'
@@ -273,8 +276,8 @@ router.get('/status/:status', async (req: Request, res: Response) => {
  */
 router.post('/:positionId/close', async (req: Request, res: Response) => {
   try {
-    const { positionId } = req.params;
-    const { exitTransactionHash } = req.body;
+  const positionId = req.params.positionId as string;
+  const exitTransactionHash = req.body.exitTransactionHash as string;
     
     if (!exitTransactionHash) {
       return res.status(400).json({
@@ -283,7 +286,7 @@ router.post('/:positionId/close', async (req: Request, res: Response) => {
       } as ApiResponse);
     }
     
-    const position = await getPositionsService().closePosition(positionId, exitTransactionHash);
+  const position = await getPositionsService().closePosition(positionId, exitTransactionHash);
     
     const response: ApiResponse<Position> = {
       success: true,
@@ -293,7 +296,7 @@ router.post('/:positionId/close', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error closing position:', error);
+    logger.error({ err: error }, 'Error closing position');
     
     if ((error as Error).message.includes('not found')) {
       return res.status(404).json({
@@ -345,12 +348,12 @@ router.post('/:positionId/close', async (req: Request, res: Response) => {
  */
 router.post('/:positionId/pending', async (req: Request, res: Response) => {
   try {
-    const { positionId } = req.params;
+  const positionId = req.params.positionId as string;
     
     // Set position to pending for limit orders waiting to be triggered
     // Example: Limit buy order at $2500 when current price is $2600
     // Example: Limit sell order at $2700 when current price is $2600
-    const position = await getPositionsService().setPositionPending(positionId);
+  const position = await getPositionsService().setPositionPending(positionId);
     
     const response: ApiResponse<Position> = {
       success: true,
@@ -360,7 +363,7 @@ router.post('/:positionId/pending', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error setting position to pending:', error);
+    logger.error({ err: error }, 'Error setting position to pending');
     
     if ((error as Error).message.includes('not found')) {
       return res.status(404).json({
@@ -498,7 +501,7 @@ router.post('/limit-order', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating limit order:', error);
+    logger.error({ err: error }, 'Error creating limit order');
     
     if ((error as Error).message.includes('invalid')) {
       return res.status(400).json({

@@ -1,5 +1,9 @@
-import { ethers } from 'ethers';
 import fs from 'fs/promises';
+
+import { ethers } from 'ethers';
+
+import { config } from '../config/index.js';
+import { logger } from '../lib/logger.js';
 import {
   PriceAlert,
   PortfolioAlert,
@@ -20,16 +24,16 @@ export class AlertsService {
   private baseChainId = 8453; // Base mainnet
 
   constructor() {
-    const providerUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
+    const providerUrl = config.providerUrl;
     
-    console.log('🔗 Initializing alerts service with provider URL:', providerUrl);
+    logger.info({ providerUrl }, 'Initializing alerts service');
     
     try {
       this.provider = new ethers.JsonRpcProvider(providerUrl);
-      console.log('✅ Alerts service initialized successfully');
+      logger.info('Alerts service initialized successfully');
       this.loadAlertsFromStorage();
     } catch (error) {
-      console.error('❌ Failed to initialize alerts service:', error);
+      logger.error({ err: error }, 'Failed to initialize alerts service');
       throw new Error(`Failed to initialize alerts service: ${(error as Error).message}`);
     }
   }
@@ -77,9 +81,9 @@ export class AlertsService {
         }
       }
       
-      console.log(`📂 Loaded alerts from storage: ${this.priceAlerts.size} price, ${this.portfolioAlerts.size} portfolio, ${this.tradeAlerts.size} trade, ${this.marketAlerts.size} market, ${this.copyTradingAlerts.size} copy trading`);
-    } catch (error) {
-      console.log('📂 No existing alerts file found, starting fresh');
+      logger.info({ price: this.priceAlerts.size, portfolio: this.portfolioAlerts.size, trade: this.tradeAlerts.size, market: this.marketAlerts.size, copy: this.copyTradingAlerts.size }, 'Loaded alerts from storage');
+    } catch (_error) {
+      logger.info('No existing alerts file found, starting fresh');
     }
   }
 
@@ -97,9 +101,9 @@ export class AlertsService {
       };
       
       await fs.writeFile(this.storageFile, JSON.stringify(alertsObj, null, 2));
-      console.log(`💾 Saved alerts to storage`);
+      logger.info('Saved alerts to storage');
     } catch (error) {
-      console.error('❌ Failed to save alerts to storage:', error);
+      logger.error({ err: error }, 'Failed to save alerts to storage');
     }
   }
 
@@ -131,10 +135,10 @@ export class AlertsService {
       this.priceAlerts.set(alertId, alert);
       await this.saveAlertsToStorage();
       
-      console.log(`✅ Price alert created: ${tokenInfo.symbol} ${condition} ${targetPrice}`);
+      logger.info({ symbol: tokenInfo.symbol, condition, targetPrice }, 'Price alert created');
       return alert;
     } catch (error) {
-      console.error('Error creating price alert:', error);
+      logger.error({ err: error }, 'Error creating price alert');
       throw error;
     }
   }
@@ -164,10 +168,10 @@ export class AlertsService {
       this.portfolioAlerts.set(alertId, alert);
       await this.saveAlertsToStorage();
       
-      console.log(`✅ Portfolio alert created: ${alertType} ${condition} ${threshold}`);
+      logger.info({ alertType, condition, threshold }, 'Portfolio alert created');
       return alert;
     } catch (error) {
-      console.error('Error creating portfolio alert:', error);
+      logger.error({ err: error }, 'Error creating portfolio alert');
       throw error;
     }
   }
@@ -204,10 +208,10 @@ export class AlertsService {
       this.tradeAlerts.set(alertId, alert);
       await this.saveAlertsToStorage();
       
-      console.log(`✅ Trade alert created: ${alertType} for ${accountName}`);
+      logger.info({ alertType, accountName }, 'Trade alert created');
       return alert;
     } catch (error) {
-      console.error('Error creating trade alert:', error);
+      logger.error({ err: error }, 'Error creating trade alert');
       throw error;
     }
   }
@@ -244,10 +248,10 @@ export class AlertsService {
       this.marketAlerts.set(alertId, alert);
       await this.saveAlertsToStorage();
       
-      console.log(`✅ Market alert created: ${alertType} ${condition} ${threshold}`);
+      logger.info({ alertType, condition, threshold }, 'Market alert created');
       return alert;
     } catch (error) {
-      console.error('Error creating market alert:', error);
+      logger.error({ err: error }, 'Error creating market alert');
       throw error;
     }
   }
@@ -286,10 +290,10 @@ export class AlertsService {
       this.copyTradingAlerts.set(alertId, alert);
       await this.saveAlertsToStorage();
       
-      console.log(`✅ Copy trading alert created: ${alertType} for wallet ${walletAddress}`);
+      logger.info({ alertType, walletAddress }, 'Copy trading alert created');
       return alert;
     } catch (error) {
-      console.error('Error creating copy trading alert:', error);
+      logger.error({ err: error }, 'Error creating copy trading alert');
       throw error;
     }
   }
@@ -327,10 +331,10 @@ export class AlertsService {
           this.priceAlerts.set(id, updatedAlert);
           triggeredAlerts.push(updatedAlert);
           
-          console.log(`🚨 Price alert triggered: ${alert.tokenSymbol} ${alert.condition} ${alert.targetPrice} (current: ${currentPrice})`);
+          logger.info({ tokenSymbol: alert.tokenSymbol, condition: alert.condition, targetPrice: alert.targetPrice, currentPrice }, 'Price alert triggered');
         }
       } catch (error) {
-        console.log(`⚠️ Error checking price alert ${id}:`, (error as Error).message);
+        logger.warn({ err: error, id }, 'Error checking price alert');
       }
     }
     
@@ -385,10 +389,10 @@ export class AlertsService {
           this.portfolioAlerts.set(id, updatedAlert);
           triggeredAlerts.push(updatedAlert);
           
-          console.log(`🚨 Portfolio alert triggered: ${alert.alertType} ${alert.condition} ${alert.threshold} (current: ${portfolioValue.toFixed(6)})`);
+          logger.info({ alertType: alert.alertType, condition: alert.condition, threshold: alert.threshold, current: portfolioValue.toFixed(6) }, 'Portfolio alert triggered');
         }
       } catch (error) {
-        console.log(`⚠️ Error checking portfolio alert ${id}:`, (error as Error).message);
+        logger.warn({ err: error, id }, 'Error checking portfolio alert');
       }
     }
     
@@ -427,12 +431,12 @@ export class AlertsService {
         } else if (alert.alertType === 'volume_surge' && alert.tokenAddress) {
           // For volume surge, we would need to get trading volume data
           // This is a placeholder - in a real implementation you'd get volume from DEX APIs
-          console.log(`⚠️ Volume surge alerts not yet implemented for ${alert.tokenAddress}`);
+          logger.warn({ tokenAddress: alert.tokenAddress }, 'Volume surge alerts not yet implemented');
           continue;
         } else if (alert.alertType === 'market_opportunity') {
           // Market opportunity could be based on various factors
           // This is a placeholder - in a real implementation you'd analyze market conditions
-          console.log(`⚠️ Market opportunity alerts not yet implemented`);
+          logger.warn('Market opportunity alerts not yet implemented');
           continue;
         }
         
@@ -447,10 +451,10 @@ export class AlertsService {
           this.marketAlerts.set(id, updatedAlert);
           triggeredAlerts.push(updatedAlert);
           
-          console.log(`🚨 Market alert triggered: ${alert.alertType} ${alert.condition} ${alert.threshold} (current: ${currentValue})`);
+          logger.info({ alertType: alert.alertType, condition: alert.condition, threshold: alert.threshold, currentValue }, 'Market alert triggered');
         }
       } catch (error) {
-        console.log(`⚠️ Error checking market alert ${id}:`, (error as Error).message);
+        logger.warn({ err: error, id }, 'Error checking market alert');
       }
     }
     
@@ -550,7 +554,7 @@ export class AlertsService {
       
       return response;
     } catch (error) {
-      console.error('Error getting alerts:', error);
+      logger.error({ err: error }, 'Error getting alerts');
       throw error;
     }
   }
@@ -581,12 +585,12 @@ export class AlertsService {
       
       if (deleted) {
         await this.saveAlertsToStorage();
-        console.log(`✅ Alert deleted: ${alertId}`);
+        logger.info({ alertId }, 'Alert deleted');
       }
       
       return deleted;
     } catch (error) {
-      console.error('Error deleting alert:', error);
+      logger.error({ err: error }, 'Error deleting alert');
       throw error;
     }
   }
@@ -607,9 +611,9 @@ export class AlertsService {
       );
 
       const [name, symbol, decimals] = await Promise.all([
-        tokenContract.name(),
-        tokenContract.symbol(),
-        tokenContract.decimals()
+        tokenContract.getFunction('name')() as Promise<string>,
+        tokenContract.getFunction('symbol')() as Promise<string>,
+        tokenContract.getFunction('decimals')() as Promise<number>
       ]);
 
       return {
@@ -618,7 +622,7 @@ export class AlertsService {
         decimals: Number(decimals)
       };
     } catch (error) {
-      console.log(`Could not fetch token info for ${tokenAddress}:`, (error as Error).message);
+      logger.warn({ err: error, tokenAddress }, 'Could not fetch token info');
       return {
         name: 'Unknown',
         symbol: 'Unknown',
@@ -636,7 +640,7 @@ export class AlertsService {
       const mockPrice = Math.random() * 100 + 0.001;
       return mockPrice.toFixed(6);
     } catch (error) {
-      console.log(`Could not get price for ${tokenAddress}:`, (error as Error).message);
+      logger.warn({ err: error, tokenAddress }, 'Could not get price');
       return '0.000000';
     }
   }

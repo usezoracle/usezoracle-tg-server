@@ -1,12 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 
+import { logger } from '../lib/logger.js';
+
 export const errorHandler = (
   error: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
-  console.error("Error: ", error);
+  logger.error({ err: error, path: req.path, method: req.method }, "Unhandled error");
 
   res.status(500).json({
     success: false,

@@ -1,7 +1,12 @@
 import { ethers } from 'ethers';
 import { AnkrProvider } from '@ankr.com/ankr.js';
-import { CopyTradingService } from './copyTradingService.js';
+
+import { decodeTransactionInput, detectBuyAndToken } from '../lib/txParsing.js';
+import { config } from '../config/index.js';
+import { logger } from '../lib/logger.js';
 import { CopyTradeEvent } from '../types/index.js';
+
+import { CopyTradingService } from './copyTradingService.js';
 
 export interface DepositEvent {
   from: string;
@@ -30,17 +35,17 @@ export class MonitoringService {
   private baseChainId = 8453; // Base mainnet
 
   constructor() {
-    // Use proper Ankr RPC endpoint format for Base network
-    const providerUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
+    // Use Ankr RPC endpoint from config
+    const providerUrl = config.providerUrl;
     
-    console.log('🔗 Initializing monitoring service with provider URL:', providerUrl);
+    logger.info({ providerUrl }, 'Initializing monitoring service');
     
     try {
       this.provider = new ethers.JsonRpcProvider(providerUrl);
       this.ankrProvider = new AnkrProvider(providerUrl);
-      console.log('✅ Monitoring service initialized successfully');
+      logger.info('Monitoring service initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize monitoring service:', error);
+      logger.error({ err: error }, 'Failed to initialize monitoring service');
       throw new Error(`Failed to initialize monitoring service: ${(error as Error).message}`);
     }
   }
@@ -64,7 +69,7 @@ export class MonitoringService {
     if (typeof obj === 'object') {
       const result: any = {};
       for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
           result[key] = this.serializeBigInts(obj[key]);
         }
       }
@@ -170,12 +175,12 @@ export class MonitoringService {
 
               try {
                 [tokenName, tokenSymbol, tokenDecimals] = await Promise.all([
-                  tokenContract.name(),
-                  tokenContract.symbol(),
-                  tokenContract.decimals()
+                  tokenContract.getFunction('name')() as Promise<string>,
+                  tokenContract.getFunction('symbol')() as Promise<string>,
+                  tokenContract.getFunction('decimals')() as Promise<number>
                 ]);
               } catch (error) {
-                console.log(`Could not fetch token info for ${log.address}:`, (error as Error).message);
+                logger.warn({ err: error, token: log.address }, 'Could not fetch token info');
               }
 
               const event: DepositEvent = {
@@ -199,7 +204,7 @@ export class MonitoringService {
             }
           }
         } catch (error) {
-          console.log(`Error processing ERC-20 transfer log:`, (error as Error).message);
+          logger.warn({ err: error }, 'Error processing ERC-20 transfer log');
           continue;
         }
       }
@@ -212,7 +217,7 @@ export class MonitoringService {
 
       return serializedEvents;
     } catch (error) {
-      console.error('Error monitoring deposits:', error);
+      logger.error({ err: error }, 'Error monitoring deposits');
       throw error;
     }
   }
@@ -238,7 +243,7 @@ export class MonitoringService {
 
       return executedEvents;
     } catch (error) {
-      console.error('Error monitoring copy trading:', error);
+      logger.error({ err: error }, 'Error monitoring copy trading');
       throw error;
     }
   }
@@ -264,8 +269,16 @@ export class MonitoringService {
 
       for (const log of logs) {
         const transaction = await this.provider.getTransaction(log.transactionHash!);
+        if (!transaction) continue;
+        // Router filter: if configured and tx.to not in routers, skip for swaps
+        const routers = config.copyTrading?.routerAddresses ?? [];
+        if (routers.length > 0 && transaction.to && transaction.data && transaction.data !== '0x') {
+          if (!routers.includes(transaction.to.toLowerCase())) {
+            continue;
+          }
+        }
         
-        if (transaction && this.isBuyTransaction(transaction)) {
+        if (this.isBuyTransaction(transaction)) {
           const tokenInfo = await this.extractTokenInfo(transaction);
           
           if (tokenInfo) {
@@ -282,7 +295,7 @@ export class MonitoringService {
         }
       }
     } catch (error) {
-      console.error('Error monitoring target wallet activity:', error);
+      logger.error({ err: error }, 'Error monitoring target wallet activity');
     }
   }
 
@@ -296,10 +309,7 @@ export class MonitoringService {
     slippage: number = 0.05 // 5% default slippage
   ): Promise<SnipeEvent> {
     try {
-      console.log(`🎯 Snipe initiated for account: ${accountName}`);
-      console.log(`Token Address: ${tokenAddress}`);
-      console.log(`Amount: ${amount} ETH`);
-      console.log(`Slippage: ${slippage * 100}%`);
+      logger.info({ accountName, tokenAddress, amount, slippage }, 'Snipe initiated');
 
       // Use CDP service for secure transaction execution
       const { CdpService } = await import('./cdpService.js');
@@ -307,7 +317,7 @@ export class MonitoringService {
 
       // Get account details from CDP
       const account = await cdpService.getAccount(accountName);
-      console.log(`Account Address: ${account.data.address}`);
+      logger.info({ accountAddress: account.data.address }, 'Fetched account');
 
       // Check account balance
       const balances = await cdpService.getBalances(accountName);
@@ -326,7 +336,7 @@ export class MonitoringService {
         network: "base"
       });
 
-      console.log(`✅ Snipe transaction executed: ${result.data.transactionHash}`);
+      logger.info({ tx: result.data.transactionHash }, 'Snipe transaction executed');
 
       // Create position in positions service
       const { PositionsService } = await import('./positionsService.js');
@@ -357,7 +367,7 @@ export class MonitoringService {
 
       return snipeEvent;
     } catch (error) {
-      console.error('Error sniping token:', error);
+      logger.error({ err: error }, 'Error sniping token');
       throw error;
     }
   }
@@ -365,40 +375,8 @@ export class MonitoringService {
   /**
    * Decode transaction data to understand what the wallet is doing
    */
-  private decodeTransactionData(data: string): { method: string; params: any } {
-    try {
-      // Common function signatures for DeFi operations
-      const functionSignatures = {
-        '0xa9059cbb': 'transfer(address,uint256)',
-        '0x23b872dd': 'transferFrom(address,address,uint256)',
-        '0x095ea7b3': 'approve(address,uint256)',
-        '0x38ed1739': 'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
-        '0x7ff36ab5': 'swapExactETHForTokens(uint256,address[],address,uint256)',
-        '0x18cbafe5': 'swapExactTokensForETH(uint256,uint256,address[],address,uint256)',
-        '0xfb3bdb41': 'swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256)',
-        '0xb6f9de95': 'swapExactETHForTokensSupportingFeeOnTransferTokens(uint256,address[],address,uint256)',
-        '0x4a25d94a': 'swapExactTokensForETHSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256)'
-      };
-
-      const methodId = data.slice(0, 10);
-      const method = functionSignatures[methodId as keyof typeof functionSignatures] || 'unknown';
-
-      // Basic parameter decoding
-      const params = data.slice(10);
-      
-      return {
-        method,
-        params: {
-          rawData: params,
-          methodId
-        }
-      };
-    } catch (error) {
-      return {
-        method: 'unknown',
-        params: { rawData: data }
-      };
-    }
+  private decodeTransactionData(data: string): { method: string; methodId: string; rawData: string } {
+    return decodeTransactionInput(data);
   }
 
   /**
@@ -409,7 +387,7 @@ export class MonitoringService {
       const balance = await this.provider.getBalance(address);
       return ethers.formatEther(balance);
     } catch (error) {
-      console.error('Error getting wallet balance:', error);
+      logger.error({ err: error }, 'Error getting wallet balance');
       throw error;
     }
   }
@@ -429,15 +407,15 @@ export class MonitoringService {
         this.provider
       );
 
-      const [balance, decimals, symbol] = await Promise.all([
-        tokenContract.balanceOf(walletAddress),
-        tokenContract.decimals(),
-        tokenContract.symbol()
+      const [balance, decimals, _symbol] = await Promise.all([
+        tokenContract.getFunction('balanceOf')(walletAddress) as Promise<bigint>,
+        tokenContract.getFunction('decimals')() as Promise<number>,
+        tokenContract.getFunction('symbol')() as Promise<string>
       ]);
 
       return ethers.formatUnits(balance, decimals);
     } catch (error) {
-      console.error('Error getting token balance:', error);
+      logger.error({ err: error }, 'Error getting token balance');
       throw error;
     }
   }
@@ -467,7 +445,7 @@ export class MonitoringService {
             transactions.push(...relevantTxs);
           }
         } catch (error) {
-          console.log(`Error getting block ${blockNumber}:`, (error as Error).message);
+          logger.warn({ err: error, blockNumber }, 'Error getting block');
           continue; // Skip this block and continue with the next
         }
       }
@@ -480,7 +458,7 @@ export class MonitoringService {
       // Serialize any BigInt values
       return this.serializeBigInts(sortedTransactions);
     } catch (error) {
-      console.error('Error getting recent transactions:', error);
+      logger.error({ err: error }, 'Error getting recent transactions');
       throw error;
     }
   }
@@ -489,21 +467,9 @@ export class MonitoringService {
    * Check if transaction is a buy transaction
    */
   private isBuyTransaction(transaction: any): boolean {
-    // Check if it's a direct ETH transfer (buying tokens)
-    if (transaction.value > 0 && transaction.data === '0x') {
-      return true;
-    }
-
-    // Check for common buy function signatures
-    const buySignatures = [
-      '0x7ff36ab5', // swapExactETHForTokens
-      '0xb6f9de95', // swapExactETHForTokensSupportingFeeOnTransferTokens
-      '0xfb3bdb41', // swapExactTokensForTokensSupportingFeeOnTransferTokens
-      '0x38ed1739'  // swapExactTokensForTokens
-    ];
-
-    const methodId = transaction.data.slice(0, 10);
-    return buySignatures.includes(methodId);
+    if (transaction.value > 0 && transaction.data === '0x') return true;
+    const detection = detectBuyAndToken(transaction.data ?? '0x');
+    return detection.isBuy;
   }
 
   /**
@@ -523,8 +489,8 @@ export class MonitoringService {
         );
 
         const [symbol, name] = await Promise.all([
-          tokenContract.symbol(),
-          tokenContract.name()
+          tokenContract.getFunction('symbol')() as Promise<string>,
+          tokenContract.getFunction('name')() as Promise<string>
         ]);
 
         return {
@@ -534,16 +500,11 @@ export class MonitoringService {
         };
       }
 
-      // For swap transactions, decode the data to get token address
-      if (transaction.data.length > 10) {
-        // This is a simplified version - in production you'd want more robust decoding
-        const methodId = transaction.data.slice(0, 10);
-        
-        if (methodId === '0x7ff36ab5' || methodId === '0xb6f9de95') {
-          // swapExactETHForTokens - token address is in the path
-          const pathData = transaction.data.slice(10);
-          // Simplified path extraction - in production use proper ABI decoding
-          const tokenAddress = '0x' + pathData.slice(24, 64);
+      // For swap transactions, use detection helper to get token address
+      if (transaction.data && transaction.data.length > 10) {
+        const detection = detectBuyAndToken(transaction.data);
+        if (detection.tokenAddress) {
+          const tokenAddress = detection.tokenAddress;
           
           const tokenContract = new ethers.Contract(
             tokenAddress,
@@ -555,8 +516,8 @@ export class MonitoringService {
           );
 
           const [symbol, name] = await Promise.all([
-            tokenContract.symbol(),
-            tokenContract.name()
+            tokenContract.getFunction('symbol')() as Promise<string>,
+            tokenContract.getFunction('name')() as Promise<string>
           ]);
 
           return {
@@ -569,7 +530,7 @@ export class MonitoringService {
 
       return null;
     } catch (error) {
-      console.error('Error extracting token info:', error);
+      logger.error({ err: error }, 'Error extracting token info');
       return null;
     }
   }

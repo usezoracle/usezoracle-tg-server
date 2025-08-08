@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
+
 import { MonitoringService, SnipeEvent } from '../services/monitoringService.js';
 import { ApiResponse } from '../types/index.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 let monitoringService: MonitoringService | null = null;
@@ -98,7 +100,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error in token sniping:', error);
+    logger.error({ err: error }, 'Error in token sniping');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to snipe token'

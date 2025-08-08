@@ -1,5 +1,9 @@
 import { ethers } from 'ethers';
+
 import { CopyTradeConfig, CopyTradeEvent, CopyTradeExecution } from '../types/index.js';
+import { config } from '../config/index.js';
+import { logger } from '../lib/logger.js';
+
 import { CdpService } from './cdpService.js';
 import { PositionsService } from './positionsService.js';
 import { AlertsService } from './alertsService.js';
@@ -11,7 +15,7 @@ export class CopyTradingService {
   private provider: ethers.JsonRpcProvider;
 
   constructor() {
-    const providerUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
+    const providerUrl = config.providerUrl;
     this.provider = new ethers.JsonRpcProvider(providerUrl);
   }
 
@@ -34,7 +38,7 @@ export class CopyTradingService {
     try {
       // Validate account exists
       const cdpService = CdpService.getInstance();
-      const account = await cdpService.getAccount(accountName);
+      const _account = await cdpService.getAccount(accountName);
       
       // Validate delegation amount
       const balances = await cdpService.getBalances(accountName);
@@ -60,10 +64,10 @@ export class CopyTradingService {
 
       this.configs.set(config.id, config);
       
-      console.log(`✅ Copy trading config created: ${config.id} for account ${accountName}`);
+      logger.info({ configId: config.id, accountName }, 'Copy trading config created');
       return config;
     } catch (error) {
-      console.error('Error creating copy trade config:', error);
+      logger.error({ err: error }, 'Error creating copy trade config');
       throw error;
     }
   }
@@ -90,7 +94,7 @@ export class CopyTradingService {
     const updatedConfig = { ...config, ...updates };
     this.configs.set(configId, updatedConfig);
     
-    console.log(`✅ Copy trading config updated: ${configId}`);
+    logger.info({ configId }, 'Copy trading config updated');
     return updatedConfig;
   }
 
@@ -104,7 +108,7 @@ export class CopyTradingService {
     }
 
     this.configs.delete(configId);
-    console.log(`✅ Copy trading config deleted: ${configId}`);
+    logger.info({ configId }, 'Copy trading config deleted');
   }
 
   /**
@@ -183,8 +187,8 @@ export class CopyTradingService {
         copyAmount
       );
 
-      console.log(`✅ Copy trade executed: ${event.id} for ${copyAmount} ETH`);
-      console.log(`✅ Copy trading alert created automatically for ${config.accountName}`);
+      logger.info({ eventId: event.id, amount: copyAmount }, 'Copy trade executed');
+      logger.info({ accountName: config.accountName }, 'Copy trading alert created automatically');
 
       return {
         success: true,
@@ -195,7 +199,7 @@ export class CopyTradingService {
       };
 
     } catch (error) {
-      console.error('Error executing copy trade:', error);
+      logger.error({ err: error }, 'Error executing copy trade');
       
       // Create failed event
       const failedConfig = this.configs.get(configId);
@@ -265,7 +269,7 @@ export class CopyTradingService {
     tokenSymbol: string,
     tokenName: string,
     amount: string,
-    transactionHash: string
+    _transactionHash: string
   ): Promise<void> {
     try {
       // Get all configs monitoring this wallet
@@ -288,11 +292,11 @@ export class CopyTradingService {
           tokenAddress,
           amount
         );
-        
-        console.log(`✅ Target wallet alert created for ${config.accountName} monitoring ${targetWalletAddress}`);
+
+        logger.info({ accountName: config.accountName, targetWalletAddress }, 'Target wallet alert created');
       }
     } catch (error) {
-      console.error('Error creating target wallet alert:', error);
+      logger.error({ err: error }, 'Error creating target wallet alert');
     }
   }
 
@@ -326,8 +330,17 @@ export class CopyTradingService {
 
       for (const log of logs) {
         const transaction = await this.provider.getTransaction(log.transactionHash!);
-        
-        if (transaction && this.isBuyTransaction(transaction)) {
+        if (!transaction) continue;
+        const routers = (require('../config/index.js') as typeof import('../config/index.js')).config.copyTrading?.routerAddresses ?? [];
+        if (routers.length > 0 && transaction.to && transaction.data && transaction.data !== '0x') {
+          if (!routers.includes(transaction.to.toLowerCase())) {
+            continue;
+          }
+        }
+
+        const buyOnly = config.copyTrading?.buyOnly ?? true;
+        const isBuy = this.isBuyTransaction(transaction);
+        if (transaction && (!buyOnly || isBuy)) {
           const tokenInfo = await this.extractTokenInfo(transaction);
           
           if (tokenInfo) {
@@ -357,7 +370,7 @@ export class CopyTradingService {
 
       return executedEvents;
     } catch (error) {
-      console.error('Error monitoring and executing copy trades:', error);
+      logger.error({ err: error }, 'Error monitoring and executing copy trades');
       throw error;
     }
   }
@@ -366,21 +379,10 @@ export class CopyTradingService {
    * Check if transaction is a buy transaction
    */
   private isBuyTransaction(transaction: any): boolean {
-    // Check if it's a direct ETH transfer (buying tokens)
-    if (transaction.value > 0 && transaction.data === '0x') {
-      return true;
-    }
-
-    // Check for common buy function signatures
-    const buySignatures = [
-      '0x7ff36ab5', // swapExactETHForTokens
-      '0xb6f9de95', // swapExactETHForTokensSupportingFeeOnTransferTokens
-      '0xfb3bdb41', // swapExactTokensForTokensSupportingFeeOnTransferTokens
-      '0x38ed1739'  // swapExactTokensForTokens
-    ];
-
-    const methodId = transaction.data.slice(0, 10);
-    return buySignatures.includes(methodId);
+    if (transaction.value > 0 && transaction.data === '0x') return true;
+    const { detectBuyAndToken } = require('../lib/txParsing.js');
+    const detection = detectBuyAndToken(transaction.data ?? '0x');
+    return detection.isBuy;
   }
 
   /**
@@ -400,8 +402,8 @@ export class CopyTradingService {
         );
 
         const [symbol, name] = await Promise.all([
-          tokenContract.symbol(),
-          tokenContract.name()
+          tokenContract.getFunction('symbol')() as Promise<string>,
+          tokenContract.getFunction('name')() as Promise<string>
         ]);
 
         return {
@@ -411,16 +413,12 @@ export class CopyTradingService {
         };
       }
 
-      // For swap transactions, decode the data to get token address
-      if (transaction.data.length > 10) {
-        // This is a simplified version - in production you'd want more robust decoding
-        const methodId = transaction.data.slice(0, 10);
-        
-        if (methodId === '0x7ff36ab5' || methodId === '0xb6f9de95') {
-          // swapExactETHForTokens - token address is in the path
-          const pathData = transaction.data.slice(10);
-          // Simplified path extraction - in production use proper ABI decoding
-          const tokenAddress = '0x' + pathData.slice(24, 64);
+      // For swap transactions, decode to get token address
+      if (transaction.data && transaction.data.length > 10) {
+        const { detectBuyAndToken } = require('../lib/txParsing.js');
+        const detection = detectBuyAndToken(transaction.data);
+        if (detection.tokenAddress) {
+          const tokenAddress = detection.tokenAddress;
           
           const tokenContract = new ethers.Contract(
             tokenAddress,
@@ -432,8 +430,8 @@ export class CopyTradingService {
           );
 
           const [symbol, name] = await Promise.all([
-            tokenContract.symbol(),
-            tokenContract.name()
+            tokenContract.getFunction('symbol')() as Promise<string>,
+            tokenContract.getFunction('name')() as Promise<string>
           ]);
 
           return {
@@ -446,7 +444,7 @@ export class CopyTradingService {
 
       return null;
     } catch (error) {
-      console.error('Error extracting token info:', error);
+      logger.error({ err: error }, 'Error extracting token info');
       return null;
     }
   }

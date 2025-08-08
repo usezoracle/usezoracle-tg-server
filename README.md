@@ -99,6 +99,71 @@ Get all copy trading configurations for an account.
 #### Get Copy Trading Events
 **GET** `/api/monitoring/copy-trading/events?accountName=myWallet`
 
+---
+
+### Token Details (NEW)
+
+#### Get Token Details
+**GET** `/api/token-details/tokens/{address}`
+
+Get detailed information about a specific token on Base network using the GeckoTerminal API.
+
+**Parameters:**
+- `address` (path, required): Token contract address
+- `include` (query, optional): Attributes for related resources to include (e.g., 'top_pools')
+
+**Example Request:**
+```bash
+curl -X GET "http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888"
+```
+
+**Example Response:**
+```json
+{
+  "data": {
+    "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    "type": "token",
+    "attributes": {
+      "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "name": "Wrapped Ether",
+      "symbol": "WETH",
+      "decimals": 18,
+      "image_url": "https://coin-images.coingecko.com/coins/images/2518/large/weth.png?1696503332",
+      "coingecko_coin_id": "weth",
+      "total_supply": "2363720769889892491835236.0",
+      "normalized_total_supply": "2363720.76988989",
+      "price_usd": "3851.5632727676",
+      "fdv_usd": "9098756423.42614",
+      "total_reserve_in_usd": "1878279660.956627272270464651455094907",
+      "volume_usd": {
+        "h24": "1108476203.4471"
+      },
+      "market_cap_usd": "9076452125.5596"
+    },
+    "relationships": {
+      "top_pools": {
+        "data": [
+          {
+            "id": "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+            "type": "pool"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+#### Get Token Details with Pools
+**GET** `/api/token-details/tokens/{address}/with-pools`
+
+Get token details including top pools information on Base network.
+
+**Example Request:**
+```bash
+curl -X GET "http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888/with-pools"
+```
+
 Get copy trading events for an account.
 
 #### Update Copy Trading Configuration
@@ -362,6 +427,8 @@ const balanceData = await balances.json();
 - Token addresses are automatically resolved for common tokens (ETH, USDC)
 - The API supports Base mainnet and Base Sepolia testnet
 - All timestamps are in ISO 8601 format (UTC)
+- Copy-trading router filtering: set `COPY_TRADING_ROUTERS` as a comma-separated list of router addresses (lowercase) to only consider swaps routed through these contracts. Example:
+  - `COPY_TRADING_ROUTERS=0x1111111254eeb25477b68fb85ed929f73a960582,0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45`
 
 ## Troubleshooting
 
@@ -381,3 +448,18 @@ This means the server needs to be updated to Node.js 19+ to support the CDP SDK.
 - **404 Not Found**: Verify the endpoint URL is correct
 
 - **500 Internal Server Error**: Server-side issue. Try again later or contact support 
+
+## Development
+
+- Install dependencies: `npm ci`
+- Run dev server: `npm run dev`
+- Lint: `npm run lint`
+- Test: `npm test` (or `npm run test:watch`)
+- Build: `npm run build`
+
+### Environment variables
+
+- `PROVIDER_URL`: Base RPC URL (default `https://rpc.ankr.com/base`)
+- `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_WALLET_SECRET`: Required for CDP SDK
+- `COPY_TRADING_BUY_ONLY`: `true|false` (default `true`)
+- `COPY_TRADING_ROUTERS`: Comma-separated router addresses (lowercase)

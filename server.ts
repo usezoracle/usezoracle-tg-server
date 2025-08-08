@@ -1,12 +1,14 @@
+import { fileURLToPath } from "url";
+import { join } from "path";
+
 import dotenv from "dotenv";
 dotenv.config();
-
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
+import helmet from "helmet";
 import YAML from "yamljs";
-import { join } from "path";
-import { fileURLToPath } from "url";
+
 import { accountRoutes } from "./routes/accountRoutes.js";
 import { transactionRoutes } from "./routes/transactionRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -17,11 +19,15 @@ import { monitoringRoutes } from "./routes/monitoringRoutes.js";
 import { snipeRoutes } from "./routes/snipeRoutes.js";
 import { positionRoutes } from "./routes/positionRoutes.js";
 import { alertRoutes } from "./routes/alertRoutes.js";
+import { tokenDetailsRoutes } from "./routes/tokenDetailsRoutes.js";
+import { config } from './config/index.js';
+import { logger } from './lib/logger.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
 
 // Middleware
+app.use(helmet());
 app.use(cors({
   origin: '*', // Allow requests from any origin
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -57,6 +63,7 @@ app.use("/api/monitoring", monitoringRoutes);
 app.use("/api/snipe", snipeRoutes);
 app.use("/api/positions", positionRoutes);
 app.use("/api/alerts", alertRoutes);
+app.use("/api/token-details", tokenDetailsRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -67,9 +74,9 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`✅ Health check: http://localhost:${PORT}/health`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+  logger.info({ port: PORT }, 'Server running');
+  logger.info(`Health check: http://localhost:${PORT}/health`);
+  logger.info(`API Documentation: http://localhost:${PORT}/api-docs`);
 });
 
 export default app;

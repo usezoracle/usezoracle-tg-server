@@ -1,16 +1,20 @@
 import { CdpClient } from "@coinbase/cdp-sdk";
-import { createPublicClient, getContract, http, parseEther } from "viem";
+import { createPublicClient, http, parseEther } from "viem";
 import { base } from "viem/chains";
+
+import { config } from '../config/index.js';
+import { logger } from '../lib/logger.js';
 
 let cdp: CdpClient;
 let publicClient: any;
 
 const initializeClient = () => {
   // Debug environment variables
-  console.log('🔍 Debugging CDP Client initialization:');
-  console.log('CDP_API_KEY_ID exists:', !!process.env.CDP_API_KEY_ID);
-  console.log('CDP_API_KEY_SECRET exists:', !!process.env.CDP_API_KEY_SECRET);
-  console.log('CDP_WALLET_SECRET exists:', !!process.env.CDP_WALLET_SECRET);
+  logger.debug({
+    hasApiKeyId: !!process.env.CDP_API_KEY_ID,
+    hasApiKeySecret: !!process.env.CDP_API_KEY_SECRET,
+    hasWalletSecret: !!process.env.CDP_WALLET_SECRET,
+  }, 'CDP Client env check');
   
   if (!cdp) {
     try {
@@ -19,23 +23,23 @@ const initializeClient = () => {
         apiKeySecret: process.env.CDP_API_KEY_SECRET!,
         walletSecret: process.env.CDP_WALLET_SECRET!,
       });
-      console.log('✅ CDP Client initialized successfully');
+      logger.info('CDP Client initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize CDP Client:', error);
+      logger.error({ err: error }, 'Failed to initialize CDP Client');
       throw error;
     }
   }
 
   if (!publicClient) {
     // Use Ankr RPC endpoint for Base network to avoid rate limiting
-    const ankrRpcUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
+    const ankrRpcUrl = config.providerUrl;
     
     publicClient = createPublicClient({
       chain: base,
       transport: http(ankrRpcUrl),
     });
     
-    console.log('✅ Public client initialized with Ankr RPC endpoint');
+    logger.info('Public client initialized with RPC endpoint');
   }
   return { cdp, publicClient };
 };
@@ -262,7 +266,7 @@ export class CdpService {
    */
   async testTokenMetadata(contractAddress: `0x${string}`) {
     try {
-      console.log(`Testing token metadata fetching for: ${contractAddress}`);
+      logger.info({ contractAddress }, 'Testing token metadata fetching');
       
       const metadata = await this.fetchTokenMetadata(contractAddress);
       
@@ -277,7 +281,7 @@ export class CdpService {
         message: "Token metadata retrieved successfully"
       };
     } catch (error) {
-      console.error(`Token metadata test failed:`, error);
+      logger.error({ err: error }, 'Token metadata test failed');
       return {
         success: false,
         error: `Failed to fetch token metadata: ${(error as Error).message}`,
@@ -349,7 +353,7 @@ export class CdpService {
 
       return null;
     } catch (error) {
-      console.warn(`Error fetching price for ${symbol}: ${(error as Error).message}`);
+      logger.warn({ err: error, symbol }, 'Error fetching price');
       return null;
     }
   }
@@ -367,7 +371,7 @@ export class CdpService {
       );
 
       if (!response.ok) {
-        console.warn(`Failed to fetch price from GeckoTerminal for ${contractAddress}: ${response.statusText}`);
+        logger.warn({ statusText: response.statusText, contractAddress }, 'Failed to fetch price from GeckoTerminal');
         return null;
       }
 
@@ -391,7 +395,7 @@ export class CdpService {
 
       return null;
     } catch (error) {
-      console.warn(`Error fetching price from GeckoTerminal for ${contractAddress}: ${(error as Error).message}`);
+      logger.warn({ err: error, contractAddress }, 'Error fetching price from GeckoTerminal');
       return null;
     }
   }
@@ -404,7 +408,7 @@ export class CdpService {
       );
 
       if (!response.ok) {
-        console.warn(`Failed to fetch price from CoinGecko for ${symbol}: ${response.statusText}`);
+        logger.warn({ statusText: response.statusText, symbol }, 'Failed to fetch price from CoinGecko');
         return null;
       }
 
@@ -420,7 +424,7 @@ export class CdpService {
 
       return null;
     } catch (error) {
-      console.warn(`Error fetching price from CoinGecko for ${symbol}: ${(error as Error).message}`);
+      logger.warn({ err: error, symbol }, 'Error fetching price from CoinGecko');
       return null;
     }
   }
@@ -529,24 +533,24 @@ export class CdpService {
     }
 
     if (tokenCache.has(contractAddress)) {
-      console.log(`Using cached metadata for ${contractAddress}`);
+      logger.info({ contractAddress }, 'Using cached token metadata');
       return tokenCache.get(contractAddress);
     }
 
     try {
       const { publicClient } = initializeClient();
 
-      console.log(`Fetching metadata for token: ${contractAddress}`);
+      logger.info({ contractAddress }, 'Fetching token metadata');
 
       // Try to get token info from a known token list first
       const knownToken = this.getKnownTokenInfo(contractAddress);
       if (knownToken) {
-        console.log(`Found known token: ${knownToken.name} (${knownToken.symbol})`);
+        logger.info({ name: knownToken.name, symbol: knownToken.symbol }, 'Found known token');
         tokenCache.set(contractAddress, knownToken);
         return knownToken;
       }
 
-      console.log(`Token not in known list, fetching from blockchain...`);
+      logger.info('Token not in known list, fetching from blockchain...');
 
       // Try to fetch metadata with individual calls and better error handling
       let name = "Unknown Token";
@@ -564,9 +568,9 @@ export class CdpService {
             setTimeout(() => reject(new Error('Name fetch timeout')), 10000)
           )
         ]);
-        console.log(`Token name: ${name}`);
+        logger.info({ name }, 'Fetched token name');
       } catch (nameError) {
-        console.warn(`Failed to fetch name for ${contractAddress}:`, (nameError as Error).message);
+        logger.warn({ err: nameError, contractAddress }, 'Failed to fetch token name');
       }
 
       try {
@@ -580,9 +584,9 @@ export class CdpService {
             setTimeout(() => reject(new Error('Symbol fetch timeout')), 10000)
           )
         ]);
-        console.log(`Token symbol: ${symbol}`);
+        logger.info({ symbol }, 'Fetched token symbol');
       } catch (symbolError) {
-        console.warn(`Failed to fetch symbol for ${contractAddress}:`, (symbolError as Error).message);
+        logger.warn({ err: symbolError, contractAddress }, 'Failed to fetch token symbol');
       }
 
       try {
@@ -596,9 +600,9 @@ export class CdpService {
             setTimeout(() => reject(new Error('Decimals fetch timeout')), 10000)
           )
         ]));
-        console.log(`Token decimals: ${decimals}`);
+        logger.info({ decimals }, 'Fetched token decimals');
       } catch (decimalsError) {
-        console.warn(`Failed to fetch decimals for ${contractAddress}:`, (decimalsError as Error).message);
+        logger.warn({ err: decimalsError, contractAddress }, 'Failed to fetch token decimals');
       }
 
       const metadata: TokenMetadata = {
@@ -607,14 +611,11 @@ export class CdpService {
         decimals: decimals || 18,
       };
 
-      console.log(`Final metadata for ${contractAddress}:`, metadata);
+      logger.info({ contractAddress, metadata }, 'Final token metadata');
       tokenCache.set(contractAddress, metadata);
       return metadata;
     } catch (error) {
-      console.warn(
-        `Failed to fetch token metadata for ${contractAddress}:`,
-        (error as Error).message
-      );
+      logger.warn({ err: error, contractAddress }, 'Failed to fetch token metadata');
       const fallback = {
         name: "Unknown Token",
         symbol: "UNKNOWN",
@@ -675,10 +676,7 @@ export class CdpService {
 
       return `${wholePart.toString()}.${trimmedFractional}`;
     } catch (error) {
-      console.warn(
-        `Failed to format amount ${amount} with ${decimals} decimals:`,
-        (error as Error).message
-      );
+      logger.warn({ err: error, amount, decimals }, 'Failed to format amount with decimals');
       return "0.0";
     }
   }

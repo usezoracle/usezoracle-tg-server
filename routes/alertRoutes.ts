@@ -1,6 +1,10 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+
 import { AlertsService } from '../services/alertsService.js';
 import { ApiResponse, AlertResponse } from '../types/index.js';
+import { validateParams, validateQuery, validateBody, alertIdParamSchema, priceAlertBodySchema, portfolioAlertBodySchema, tradeAlertBodySchema, marketAlertBodySchema, setupCopyTradingBodySchema, copyTradingStatusQuerySchema } from '../middleware/requestValidation.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 let alertsService: AlertsService | null = null;
@@ -43,7 +47,12 @@ function getAlertsService(): AlertsService {
  *       500:
  *         description: Internal server error
  */
-router.get('/', async (req: Request, res: Response) => {
+const alertsQuerySchema = z.object({
+  accountName: z.string().optional(),
+  alertType: z.enum(['price','portfolio','trade','market','copy']).optional()
+});
+
+router.get('/', validateQuery(alertsQuerySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, alertType } = req.query;
     
@@ -60,7 +69,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting alerts:', error);
+    logger.error({ err: error }, 'Error getting alerts');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get alerts'
@@ -109,23 +118,9 @@ router.get('/', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/price', async (req: Request, res: Response) => {
+router.post('/price', validateBody(priceAlertBodySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, tokenAddress, targetPrice, condition } = req.body;
-    
-    if (!accountName || !tokenAddress || !targetPrice || !condition) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName, tokenAddress, targetPrice, and condition are required'
-      } as ApiResponse);
-    }
-    
-    if (!['above', 'below'].includes(condition)) {
-      return res.status(400).json({
-        success: false,
-        error: 'condition must be "above" or "below"'
-      } as ApiResponse);
-    }
     
     const alert = await getAlertsService().createPriceAlert(
       accountName,
@@ -142,7 +137,7 @@ router.post('/price', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating price alert:', error);
+    logger.error({ err: error }, 'Error creating price alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to create price alert'
@@ -192,30 +187,9 @@ router.post('/price', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/portfolio', async (req: Request, res: Response) => {
+router.post('/portfolio', validateBody(portfolioAlertBodySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, alertType, threshold, condition } = req.body;
-    
-    if (!accountName || !alertType || !threshold || !condition) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName, alertType, threshold, and condition are required'
-      } as ApiResponse);
-    }
-    
-    if (!['value_increase', 'value_decrease', 'pnl_threshold'].includes(alertType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType must be "value_increase", "value_decrease", or "pnl_threshold"'
-      } as ApiResponse);
-    }
-    
-    if (!['above', 'below'].includes(condition)) {
-      return res.status(400).json({
-        success: false,
-        error: 'condition must be "above" or "below"'
-      } as ApiResponse);
-    }
     
     const alert = await getAlertsService().createPortfolioAlert(
       accountName,
@@ -232,7 +206,7 @@ router.post('/portfolio', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating portfolio alert:', error);
+    logger.error({ err: error }, 'Error creating portfolio alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to create portfolio alert'
@@ -279,23 +253,9 @@ router.post('/portfolio', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/trade', async (req: Request, res: Response) => {
+router.post('/trade', validateBody(tradeAlertBodySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, alertType, tokenAddress, amount } = req.body;
-    
-    if (!accountName || !alertType) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName and alertType are required'
-      } as ApiResponse);
-    }
-    
-    if (!['successful_trade', 'failed_transaction', 'large_trade'].includes(alertType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType must be "successful_trade", "failed_transaction", or "large_trade"'
-      } as ApiResponse);
-    }
     
     const alert = await getAlertsService().createTradeAlert(
       accountName,
@@ -312,7 +272,7 @@ router.post('/trade', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating trade alert:', error);
+    logger.error({ err: error }, 'Error creating trade alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to create trade alert'
@@ -361,30 +321,9 @@ router.post('/trade', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/market', async (req: Request, res: Response) => {
+router.post('/market', validateBody(marketAlertBodySchema), async (req: Request, res: Response) => {
   try {
     const { alertType, threshold, condition, tokenAddress } = req.body;
-    
-    if (!alertType || !threshold || !condition) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType, threshold, and condition are required'
-      } as ApiResponse);
-    }
-    
-    if (!['price_spike', 'volume_surge', 'market_opportunity'].includes(alertType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType must be "price_spike", "volume_surge", or "market_opportunity"'
-      } as ApiResponse);
-    }
-    
-    if (!['above', 'below'].includes(condition)) {
-      return res.status(400).json({
-        success: false,
-        error: 'condition must be "above" or "below"'
-      } as ApiResponse);
-    }
     
     const alert = await getAlertsService().createMarketAlert(
       alertType,
@@ -401,7 +340,7 @@ router.post('/market', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating market alert:', error);
+    logger.error({ err: error }, 'Error creating market alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to create market alert'
@@ -468,16 +407,9 @@ router.post('/copy-trading', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/setup-copy-trading', async (req: Request, res: Response) => {
+router.post('/setup-copy-trading', validateBody(setupCopyTradingBodySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, targetWalletAddress, delegationAmount, maxSlippage = 0.05 } = req.body;
-    
-    if (!accountName || !targetWalletAddress || !delegationAmount) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName, targetWalletAddress, and delegationAmount are required'
-      } as ApiResponse);
-    }
     
     // Import and use the copy trading service
     const { CopyTradingService } = await import('../services/copyTradingService.js');
@@ -498,7 +430,7 @@ router.post('/setup-copy-trading', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error setting up copy trading:', error);
+    logger.error({ err: error }, 'Error setting up copy trading');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to setup copy trading'
@@ -526,16 +458,9 @@ router.post('/setup-copy-trading', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/copy-trading/status', async (req: Request, res: Response) => {
+router.get('/copy-trading/status', validateQuery(copyTradingStatusQuerySchema), async (req: Request, res: Response) => {
   try {
     const { accountName } = req.query;
-    
-    if (!accountName) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName is required'
-      } as ApiResponse);
-    }
     
     // Import and use the copy trading service
     const { CopyTradingService } = await import('../services/copyTradingService.js');
@@ -562,7 +487,7 @@ router.get('/copy-trading/status', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting copy trading status:', error);
+    logger.error({ err: error }, 'Error getting copy trading status');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get copy trading status'
@@ -625,7 +550,7 @@ router.post('/copy-trading/stop', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error stopping copy trading:', error);
+    logger.error({ err: error }, 'Error stopping copy trading');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to stop copy trading'
@@ -656,9 +581,9 @@ router.post('/copy-trading/stop', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.delete('/:alertId', async (req: Request, res: Response) => {
+router.delete('/:alertId', validateParams(alertIdParamSchema), async (req: Request, res: Response) => {
   try {
-    const { alertId } = req.params;
+  const alertId = req.params.alertId as string;
     
     const deleted = await getAlertsService().deleteAlert(alertId);
     
@@ -676,7 +601,7 @@ router.delete('/:alertId', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error deleting alert:', error);
+    logger.error({ err: error }, 'Error deleting alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to delete alert'
@@ -717,7 +642,7 @@ router.post('/check', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error checking alerts:', error);
+    logger.error({ err: error }, 'Error checking alerts');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to check alerts'

@@ -9,6 +9,30 @@ servers:
   - url: https://usezoracle-telegrambot.up.railway.app
     description: Production server
 
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Accounts
+    description: Account management operations
+  - name: Balances
+    description: Balance checking operations
+  - name: Transactions
+    description: Transaction management
+  - name: Swaps
+    description: Token swap operations
+  - name: Tokens
+    description: Token information and metadata
+  - name: Token Details
+    description: Detailed token information using GeckoTerminal API
+  - name: Monitoring
+    description: Portfolio monitoring operations
+  - name: Snipe
+    description: Token snipe operations
+  - name: Positions
+    description: Position management
+  - name: Alerts
+    description: Alert management and monitoring
+
 paths:
   /health:
     get:
@@ -343,6 +367,7 @@ paths:
 
   /api/swaps/price:
     get:
+      operationId: getSwapPriceEstimate
       summary: Get swap price estimate
       description: Returns price estimate for swapping tokens. This is for display purposes only and doesn't reserve funds.
       tags:
@@ -402,6 +427,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests (rate limited)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
@@ -411,6 +442,7 @@ paths:
 
   /api/swaps/execute:
     post:
+      operationId: executeSwap
       summary: Execute token swap
       description: |
         Executes a swap between tokens with automatic token allowance management.
@@ -494,6 +526,12 @@ paths:
                 $ref: "#/components/schemas/SwapExecutionResponse"
         "400":
           description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests (rate limited)
           content:
             application/json:
               schema:
@@ -1222,6 +1260,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests (rate limited)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
@@ -1749,8 +1793,323 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/tokens/{contractAddress}:
+    get:
+      operationId: getBasicTokenInfo
+      summary: Get token information
+      description: |
+        Retrieve basic token information (name, symbol, decimals) using the CDP service.
+
+        For market data (price, supply, pools), use the Token Details endpoints:
+        - `GET /api/token-details/tokens/{address}`
+        - `GET /api/token-details/tokens/{address}/with-pools`
+      tags:
+        - Tokens
+      parameters:
+        - in: path
+          name: contractAddress
+          required: true
+          schema:
+            type: string
+          description: Token contract address
+          example: "0x4200000000000000000000000000000000000006"
+        - in: query
+          name: network
+          schema:
+            type: string
+            enum: [base, base-sepolia, ethereum]
+          description: Network to query (defaults to base)
+          example: "base"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/tokens/0x4200000000000000000000000000000000000006?network=base"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/tokens/0x4200000000000000000000000000000000000006?network=base')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Token information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/tokens/test/{contractAddress}:
+    get:
+      summary: Test token metadata
+      description: Test token metadata fetching for any token address
+      tags:
+        - Tokens
+      parameters:
+        - in: path
+          name: contractAddress
+          required: true
+          schema:
+            type: string
+          description: Token contract address to test
+          example: "0x4200000000000000000000000000000000000006"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/tokens/test/0x4200000000000000000000000000000000000006"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/tokens/test/0x4200000000000000000000000000000000000006')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Token metadata test completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/token-details/tokens/{address}:
+    get:
+      operationId: getTokenDetailsBase
+      summary: Get specific token on Base network
+      description: |
+        Retrieve detailed token market information on Base network using the GeckoTerminal API (price, supply, pools).
+
+        For basic on-chain metadata (name, symbol, decimals), use the Tokens endpoint:
+        - `GET /api/tokens/{contractAddress}`
+      tags:
+        - Token Details
+      parameters:
+        - in: path
+          name: address
+          required: true
+          schema:
+            type: string
+          description: Token contract address
+          example: "0x907bdae00e91544a270694714832410ad8418888"
+        - in: query
+          name: include
+          schema:
+            type: string
+            enum: [top_pools]
+          description: Attributes for related resources to include, which will be returned under the top-level "included" key
+          example: "top_pools"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Get specific token on a network
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeckoTokenDetailsResponse"
+        "400":
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/token-details/tokens/{address}/with-pools:
+    get:
+      operationId: getTokenDetailsWithPoolsBase
+      summary: Get token details with top pools on Base network
+      description: |
+        Retrieve token details including top pools information on Base network.
+
+        For basic on-chain metadata (name, symbol, decimals), use the Tokens endpoint:
+        - `GET /api/tokens/{contractAddress}`
+      tags:
+        - Token Details
+      parameters:
+        - in: path
+          name: address
+          required: true
+          schema:
+            type: string
+          description: Token contract address
+          example: "0x907bdae00e91544a270694714832410ad8418888"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888/with-pools"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888/with-pools')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Token details with pools retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeckoTokenDetailsResponse"
+        "429":
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
+    GeckoTokenAttributes:
+      type: object
+      properties:
+        address:
+          type: string
+          description: Token contract address
+          example: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        name:
+          type: string
+          description: Token name
+          example: "Wrapped Ether"
+        symbol:
+          type: string
+          description: Token symbol
+          example: "WETH"
+        decimals:
+          type: integer
+          description: Token decimals
+          example: 18
+        image_url:
+          type: string
+          description: Token image URL
+          example: "https://coin-images.coingecko.com/coins/images/2518/large/weth.png?1696503332"
+        coingecko_coin_id:
+          type: string
+          description: CoinGecko coin ID
+          example: "weth"
+        total_supply:
+          type: string
+          description: Total token supply
+          example: "2363720769889892491835236.0"
+        normalized_total_supply:
+          type: string
+          description: Normalized total supply
+          example: "2363720.76988989"
+        price_usd:
+          type: string
+          description: Current USD price
+          example: "3851.5632727676"
+        fdv_usd:
+          type: string
+          description: Fully diluted valuation in USD
+          example: "9098756423.42614"
+        total_reserve_in_usd:
+          type: string
+          description: Total reserve in USD
+          example: "1878279660.9566"
+        volume_usd:
+          type: object
+          description: Volume data in USD
+          properties:
+            h24:
+              type: string
+              description: 24-hour volume
+              example: "1108476203.4471"
+        market_cap_usd:
+          type: string
+          description: Market cap in USD
+          example: "9076452125.5596"
+
+    GeckoTokenRelationships:
+      type: object
+      properties:
+        top_pools:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+                  type:
+                    type: string
+                    example: "pool"
+
+    GeckoTokenData:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          example: "token"
+        attributes:
+          $ref: "#/components/schemas/GeckoTokenAttributes"
+        relationships:
+          $ref: "#/components/schemas/GeckoTokenRelationships"
+
+    GeckoTokenDetailsResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/GeckoTokenData"
+        included:
+          type: array
+          description: Included related resources (e.g., top pools) when requested via include=top_pools
+          items:
+            type: object
     ApiResponse:
       type: object
       properties:
@@ -1773,6 +2132,10 @@ components:
         error:
           type: string
           description: Error message
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO timestamp when the error occurred
 
     AccountResponse:
       type: object

@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { SwapService } from "../services/swapService.js";
+
+import { SwapService, EvmSwapsNetwork } from "../services/swapService.js";
+import { sensitiveLimiter, burstLimiter } from "../middleware/rateLimit.js";
+import { validateParams, validateQuery, networkParamSchema, allowanceQuerySchema, swapPriceQuerySchema } from "../middleware/requestValidation.js";
 import {
   validateSwapPrice,
   validateSwapExecution,
@@ -12,9 +15,9 @@ const swapService = SwapService.getInstance();
  * @route GET /api/swaps/tokens/:network
  * @description Get list of common token addresses for a specific network
  */
-router.get("/tokens/:network", (req, res, next) => {
+router.get("/tokens/:network", validateParams(networkParamSchema), (req, res, _next) => {
   try {
-    const { network } = req.params;
+    const network = req.params.network as "base" | "base-sepolia" | "ethereum";
     if (!["base", "base-sepolia", "ethereum"].includes(network)) {
       return res.status(400).json({
         success: false,
@@ -24,7 +27,7 @@ router.get("/tokens/:network", (req, res, next) => {
     }
 
     const tokens = swapService.getCommonTokens(
-      network as "base" | "base-sepolia" | "ethereum"
+      network as EvmSwapsNetwork | "base-sepolia"
     );
     res.json({
       success: true,
@@ -32,7 +35,7 @@ router.get("/tokens/:network", (req, res, next) => {
       message: `Token addresses for ${network} network`,
     });
   } catch (error) {
-    next(error);
+    _next(error);
   }
 });
 
@@ -40,17 +43,17 @@ router.get("/tokens/:network", (req, res, next) => {
  * @route GET /api/swaps/price
  * @description Get price estimate for a swap
  */
-router.get("/price", validateSwapPrice, async (req, res, next) => {
+router.get("/price", burstLimiter, validateQuery(swapPriceQuerySchema), validateSwapPrice, async (req, res, _next) => {
   try {
     const { accountName, fromToken, toToken, fromAmount, network } =
-      req.query as any;
+      req.query as { accountName?: string; fromToken?: string; toToken?: string; fromAmount?: string; network?: string };
 
     const result = await swapService.getSwapPrice({
-      accountName,
-      fromToken,
-      toToken,
-      fromAmount,
-      network: network || "base",
+      accountName: accountName as string,
+      fromToken: fromToken as string,
+      toToken: toToken as string,
+      fromAmount: fromAmount as string,
+      network: ((network || "base") as EvmSwapsNetwork),
     });
 
     res.json(result);
@@ -68,7 +71,7 @@ router.get("/price", validateSwapPrice, async (req, res, next) => {
  * @note Automatically handles token allowance checking and approval for ERC20 tokens
  * @note Supports ERC20 to ERC20, ETH to ERC20, and ERC20 to ETH swaps
  */
-router.post("/execute", validateSwapExecution, async (req, res, next) => {
+router.post("/execute", sensitiveLimiter, validateSwapExecution, async (req, res, _next) => {
   try {
     const {
       accountName,
@@ -80,12 +83,12 @@ router.post("/execute", validateSwapExecution, async (req, res, next) => {
     } = req.body;
 
     const result = await swapService.executeSwap({
-      accountName,
-      fromToken,
-      toToken,
-      fromAmount,
-      slippageBps,
-      network: network || "base",
+      accountName: accountName as string,
+      fromToken: fromToken as string,
+      toToken: toToken as string,
+      fromAmount: fromAmount as string,
+      slippageBps: slippageBps as number,
+      network: ((network || "base") as EvmSwapsNetwork),
     });
 
     res.json(result);
@@ -101,7 +104,7 @@ router.post("/execute", validateSwapExecution, async (req, res, next) => {
  * @route POST /api/swaps/approve
  * @description Manually approve tokens for the Permit2 contract
  */
-router.post("/approve", async (req, res, next) => {
+router.post("/approve", sensitiveLimiter, async (req, res, _next) => {
   try {
     const {
       accountName,
@@ -118,10 +121,10 @@ router.post("/approve", async (req, res, next) => {
     }
 
     const result = await swapService.approveTokens(
-      accountName,
-      tokenAddress,
-      amount,
-      network || "base"
+      accountName as string,
+      tokenAddress as string,
+      amount as string,
+      ((network || "base") as EvmSwapsNetwork)
     );
 
     res.json(result);
@@ -137,7 +140,7 @@ router.post("/approve", async (req, res, next) => {
  * @route GET /api/swaps/allowance
  * @description Check current token allowance for an account
  */
-router.get("/allowance", async (req, res, next) => {
+router.get("/allowance", validateQuery(allowanceQuerySchema), async (req, res, _next) => {
   try {
     const {
       accountName,
@@ -153,9 +156,9 @@ router.get("/allowance", async (req, res, next) => {
     }
 
     const result = await swapService.checkTokenAllowance(
-      accountName,
-      tokenAddress,
-      network || "base"
+      accountName as string,
+      tokenAddress as string,
+      ((network || "base") as EvmSwapsNetwork)
     );
 
     res.json(result);
@@ -171,7 +174,7 @@ router.get("/allowance", async (req, res, next) => {
  * @route POST /api/swaps/validate
  * @description Validate account and balance before swap operations
  */
-router.post("/validate", async (req, res, next) => {
+router.post("/validate", async (req, res, _next) => {
   try {
     const {
       accountName,
@@ -188,10 +191,10 @@ router.post("/validate", async (req, res, next) => {
     }
 
     const result = await swapService.validateSwapPrerequisites(
-      accountName,
-      fromToken,
-      fromAmount,
-      network || "base"
+      accountName as string,
+      fromToken as string,
+      fromAmount as string,
+      ((network || "base") as EvmSwapsNetwork)
     );
 
     res.json(result);
@@ -207,7 +210,7 @@ router.post("/validate", async (req, res, next) => {
  * @route POST /api/swaps/fund
  * @description Fund an account with ETH for gas fees
  */
-router.post("/fund", async (req, res, next) => {
+router.post("/fund", async (req, res, _next) => {
   try {
     const {
       accountName,
@@ -223,9 +226,9 @@ router.post("/fund", async (req, res, next) => {
     }
 
     const result = await swapService.fundAccountWithEth(
-      accountName,
-      amount,
-      network || "base"
+      accountName as string,
+      amount as string,
+      ((network || "base") as EvmSwapsNetwork)
     );
 
     res.json(result);
@@ -241,7 +244,7 @@ router.post("/fund", async (req, res, next) => {
  * @route GET /api/swaps/balance
  * @description Check account ETH balance
  */
-router.get("/balance", async (req, res, next) => {
+router.get("/balance", async (req, res, _next) => {
   try {
     const {
       accountName,
@@ -256,8 +259,8 @@ router.get("/balance", async (req, res, next) => {
     }
 
     const result = await swapService.checkAccountEthBalance(
-      accountName,
-      network || "base"
+      accountName as string,
+      ((network || "base") as EvmSwapsNetwork)
     );
 
     res.json(result);
@@ -273,7 +276,7 @@ router.get("/balance", async (req, res, next) => {
  * @route GET /api/swaps/max-amount
  * @description Get maximum available amount for a token
  */
-router.get("/max-amount", async (req, res, next) => {
+router.get("/max-amount", async (req, res, _next) => {
   try {
     const {
       accountName,
@@ -289,9 +292,9 @@ router.get("/max-amount", async (req, res, next) => {
     }
 
     const result = await swapService.getMaxAvailableAmount(
-      accountName,
-      tokenAddress,
-      network || "base"
+      accountName as string,
+      tokenAddress as string,
+      ((network || "base") as EvmSwapsNetwork)
     );
 
     res.json(result);
@@ -307,7 +310,7 @@ router.get("/max-amount", async (req, res, next) => {
  * @route GET /api/swaps/check-approval-support
  * @description Check if a token supports standard ERC20 approval
  */
-router.get("/check-approval-support", async (req, res, next) => {
+router.get("/check-approval-support", async (req, res, _next) => {
   try {
     const {
       tokenAddress,
@@ -322,8 +325,8 @@ router.get("/check-approval-support", async (req, res, next) => {
     }
 
     const result = await swapService.checkTokenApprovalSupport(
-      tokenAddress,
-      network || "base"
+      tokenAddress as string,
+      ((network || "base") as EvmSwapsNetwork)
     );
 
     res.json(result);

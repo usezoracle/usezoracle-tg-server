@@ -1,7 +1,11 @@
-import { ethers } from 'ethers';
-import { Position, PositionsResponse } from '../types/index.js';
 import fs from 'fs/promises';
-import path from 'path';
+import path from 'path'; // eslint-disable-line @typescript-eslint/no-unused-vars
+
+import { ethers } from 'ethers';
+
+import { Position, PositionsResponse } from '../types/index.js';
+import { config } from '../config/index.js';
+import { logger } from '../lib/logger.js';
 
 export class PositionsService {
   private provider: ethers.JsonRpcProvider;
@@ -16,16 +20,16 @@ export class PositionsService {
   private readonly CHUNK_DELAY = 100; // Delay between chunks in ms
 
   constructor() {
-    const providerUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
+    const providerUrl = config.providerUrl;
     
-    console.log('🔗 Initializing positions service with provider URL:', providerUrl);
+    logger.info({ providerUrl }, 'Initializing positions service');
     
     try {
       this.provider = new ethers.JsonRpcProvider(providerUrl);
-      console.log('✅ Positions service initialized successfully');
+      logger.info('Positions service initialized successfully');
       this.loadPositionsFromStorage();
     } catch (error) {
-      console.error('❌ Failed to initialize positions service:', error);
+      logger.error({ err: error }, 'Failed to initialize positions service');
       throw new Error(`Failed to initialize positions service: ${(error as Error).message}`);
     }
   }
@@ -42,9 +46,9 @@ export class PositionsService {
         this.positions.set(id, position as Position);
       }
       
-      console.log(`📂 Loaded ${this.positions.size} positions from storage`);
-    } catch (error) {
-      console.log('📂 No existing positions file found, starting fresh');
+      logger.info({ count: this.positions.size }, 'Loaded positions from storage');
+    } catch (_error) {
+      logger.info('No existing positions file found, starting fresh');
     }
   }
 
@@ -55,9 +59,9 @@ export class PositionsService {
     try {
       const positionsObj = Object.fromEntries(this.positions);
       await fs.writeFile(this.storageFile, JSON.stringify(positionsObj, null, 2));
-      console.log(`💾 Saved ${this.positions.size} positions to storage`);
+      logger.info({ count: this.positions.size }, 'Saved positions to storage');
     } catch (error) {
-      console.error('❌ Failed to save positions to storage:', error);
+      logger.error({ err: error }, 'Failed to save positions to storage');
     }
   }
 
@@ -67,7 +71,7 @@ export class PositionsService {
    */
   async fetchPositionsFromBlockchain(accountName: string): Promise<Position[]> {
     try {
-      console.log(`🔍 Fetching blockchain positions for account: ${accountName}`);
+      logger.info({ accountName }, 'Fetching blockchain positions');
       
       // Get account address from CDP service
       const { CdpService } = await import('./cdpService.js');
@@ -76,13 +80,13 @@ export class PositionsService {
       const account = await cdpService.getAccount(accountName);
       const accountAddress = account.data.address;
       
-      console.log(`📍 Account address: ${accountAddress}`);
+      logger.info({ accountAddress }, 'Using account address');
       
       // Get recent transactions for this account
       const latestBlock = await this.provider.getBlockNumber();
       const fromBlock = Math.max(0, latestBlock - this.SCAN_BLOCKS);
       
-      console.log(`📊 Scanning blocks ${fromBlock} to ${latestBlock} (${this.SCAN_BLOCKS} blocks)`);
+      logger.info({ fromBlock, latestBlock, scanBlocks: this.SCAN_BLOCKS }, 'Scanning blocks');
       
       const positions: Position[] = [];
       
@@ -94,7 +98,7 @@ export class PositionsService {
           const chunkToBlock = Math.min(chunkFromBlock + this.CHUNK_SIZE - 1, latestBlock);
         
         try {
-          console.log(`📦 Processing chunk ${i + 1}/${chunks}: blocks ${chunkFromBlock}-${chunkToBlock}`);
+          logger.debug({ chunk: i + 1, chunks, chunkFromBlock, chunkToBlock }, 'Processing chunk');
           
           // Scan for token purchase transactions in this chunk
           const logs = await this.provider.getLogs({
@@ -103,7 +107,7 @@ export class PositionsService {
             address: accountAddress
           });
           
-          console.log(`🔍 Found ${logs.length} logs in chunk ${i + 1}`);
+          logger.debug({ logs: logs.length, chunk: i + 1 }, 'Found logs in chunk');
           
           for (const log of logs) {
             try {
@@ -134,10 +138,10 @@ export class PositionsService {
                 positions.push(position);
                 this.positions.set(positionId, position);
                 
-                console.log(`✅ Found position: ${tokenInfo.symbol} - ${ethers.formatEther(transaction.value)} tokens`);
+                logger.info({ symbol: tokenInfo.symbol, amount: ethers.formatEther(transaction.value) }, 'Found position');
               }
             } catch (error) {
-              console.log(`⚠️ Error processing transaction ${log.transactionHash}:`, (error as Error).message);
+              logger.warn({ err: error, tx: log.transactionHash }, 'Error processing transaction');
               continue;
             }
           }
@@ -148,20 +152,20 @@ export class PositionsService {
           }
           
         } catch (error) {
-          console.log(`⚠️ Error processing chunk ${i + 1}:`, (error as Error).message);
+          logger.warn({ err: error, chunk: i + 1 }, 'Error processing chunk');
           continue; // Continue with next chunk even if this one fails
         }
       }
       
-      console.log(`✅ Found ${positions.length} positions from blockchain for ${accountName}`);
+      logger.info({ count: positions.length, accountName }, 'Found positions from blockchain');
       await this.savePositionsToStorage();
       
       return positions;
     } catch (error) {
-      console.error('Error fetching positions from blockchain:', error);
+      logger.error({ err: error }, 'Error fetching positions from blockchain');
       
       // If chunked approach fails, try a more conservative approach
-      console.log('🔄 Trying fallback approach with smaller block range...');
+      logger.info('Trying fallback approach with smaller block range...');
       return this.fetchPositionsFromBlockchainFallback(accountName);
     }
   }
@@ -171,7 +175,7 @@ export class PositionsService {
    */
   private async fetchPositionsFromBlockchainFallback(accountName: string): Promise<Position[]> {
     try {
-      console.log(`🔄 Using fallback method for account: ${accountName}`);
+      logger.info({ accountName }, 'Using fallback method for positions');
       
       // Get account address from CDP service
       const { CdpService } = await import('./cdpService.js');
@@ -183,7 +187,7 @@ export class PositionsService {
       const latestBlock = await this.provider.getBlockNumber();
       const fromBlock = Math.max(0, latestBlock - this.FALLBACK_BLOCKS);
       
-      console.log(`📊 Fallback: Scanning blocks ${fromBlock} to ${latestBlock} (${this.FALLBACK_BLOCKS} blocks)`);
+      logger.info({ fromBlock, latestBlock, fallbackBlocks: this.FALLBACK_BLOCKS }, 'Fallback scanning blocks');
       
       const positions: Position[] = [];
       
@@ -195,7 +199,7 @@ export class PositionsService {
           address: accountAddress
         });
         
-        console.log(`🔍 Found ${logs.length} logs in fallback scan`);
+        logger.debug({ logs: logs.length }, 'Found logs in fallback scan');
         
         for (const log of logs) {
           try {
@@ -225,24 +229,24 @@ export class PositionsService {
               positions.push(position);
               this.positions.set(positionId, position);
               
-              console.log(`✅ Found position: ${tokenInfo.symbol} - ${ethers.formatEther(transaction.value)} tokens`);
+              logger.info({ symbol: tokenInfo.symbol, amount: ethers.formatEther(transaction.value) }, 'Found position (fallback)');
             }
           } catch (error) {
-            console.log(`⚠️ Error processing transaction ${log.transactionHash}:`, (error as Error).message);
+            logger.warn({ err: error, tx: log.transactionHash }, 'Error processing transaction (fallback)');
             continue;
           }
         }
       } catch (error) {
-        console.log(`⚠️ Fallback method also failed:`, (error as Error).message);
-        console.log(`📝 Returning empty positions array - will rely on CDP service data`);
+        logger.warn({ err: error }, 'Fallback method also failed');
+        logger.info('Returning empty positions array - will rely on CDP service data');
       }
       
-      console.log(`✅ Fallback: Found ${positions.length} positions for ${accountName}`);
+      logger.info({ count: positions.length, accountName }, 'Fallback found positions');
       await this.savePositionsToStorage();
       
       return positions;
     } catch (error) {
-      console.error('Error in fallback method:', error);
+      logger.error({ err: error }, 'Error in fallback method');
       return []; // Return empty array if everything fails
     }
   }
@@ -252,7 +256,7 @@ export class PositionsService {
    */
   async fetchPositionsFromCDP(): Promise<Position[]> {
     try {
-      console.log('🔍 Fetching positions from CDP service...');
+      logger.info('Fetching positions from CDP service');
       
       const { CdpService } = await import('./cdpService.js');
       const cdpService = CdpService.getInstance();
@@ -266,7 +270,7 @@ export class PositionsService {
       for (const account of accounts) {
         if (!account.name) continue;
         try {
-          console.log(`📊 Processing account: ${account.name}`);
+          logger.info({ accountName: account.name }, 'Processing account');
           
           // Get account balances to identify positions
           const balancesResponse = await cdpService.getBalances(account.name);
@@ -304,17 +308,17 @@ export class PositionsService {
             }
           }
         } catch (error) {
-          console.log(`⚠️ Error processing account ${account.name}:`, (error as Error).message);
+          logger.warn({ err: error, accountName: account.name }, 'Error processing account');
           continue;
         }
       }
       
-      console.log(`✅ Found ${allPositions.length} positions from CDP service`);
+      logger.info({ count: allPositions.length }, 'Found positions from CDP service');
       await this.savePositionsToStorage();
       
       return allPositions;
     } catch (error) {
-      console.error('Error fetching positions from CDP:', error);
+      logger.error({ err: error }, 'Error fetching positions from CDP');
       throw error;
     }
   }
@@ -324,7 +328,7 @@ export class PositionsService {
    */
   async syncPositions(): Promise<void> {
     try {
-      console.log('🔄 Syncing positions from all sources...');
+      logger.info('Syncing positions from all sources');
       
       // 1. Load from persistent storage
       await this.loadPositionsFromStorage();
@@ -344,13 +348,13 @@ export class PositionsService {
         try {
           await this.fetchPositionsFromBlockchain(account.name);
         } catch (error) {
-          console.log(`⚠️ Error syncing positions for account ${account.name}:`, (error as Error).message);
+          logger.warn({ err: error, accountName: account.name }, 'Error syncing positions for account');
         }
       }
       
-      console.log(`✅ Position sync completed. Total positions: ${this.positions.size}`);
+      logger.info({ total: this.positions.size }, 'Position sync completed');
     } catch (error) {
-      console.error('Error syncing positions:', error);
+      logger.error({ err: error }, 'Error syncing positions');
       throw error;
     }
   }
@@ -388,14 +392,14 @@ export class PositionsService {
       };
 
       this.positions.set(positionId, position);
-      console.log(`✅ Position added: ${positionId}`);
+      logger.info({ positionId }, 'Position added');
       
       // Save to persistent storage
       await this.savePositionsToStorage();
       
       return position;
     } catch (error) {
-      console.error('Error adding position:', error);
+      logger.error({ err: error }, 'Error adding position');
       throw error;
     }
   }
@@ -437,14 +441,14 @@ export class PositionsService {
       };
 
       this.positions.set(positionId, updatedPosition);
-      console.log(`✅ Position closed: ${positionId}, PnL: ${pnl.toFixed(6)} ETH (${pnlPercentage.toFixed(2)}%)`);
+      logger.info({ positionId, pnl: pnl.toFixed(6), pnlPercentage: pnlPercentage.toFixed(2) }, 'Position closed');
       
       // Save to persistent storage
       await this.savePositionsToStorage();
       
       return updatedPosition;
     } catch (error) {
-      console.error('Error closing position:', error);
+      logger.error({ err: error }, 'Error closing position');
       throw error;
     }
   }
@@ -465,14 +469,14 @@ export class PositionsService {
       };
 
       this.positions.set(positionId, updatedPosition);
-      console.log(`⏳ Position set to pending: ${positionId}`);
+      logger.info({ positionId }, 'Position set to pending');
       
       // Save to persistent storage
       await this.savePositionsToStorage();
       
       return updatedPosition;
     } catch (error) {
-      console.error('Error setting position to pending:', error);
+      logger.error({ err: error }, 'Error setting position to pending');
       throw error;
     }
   }
@@ -518,8 +522,8 @@ export class PositionsService {
                 pnl: pnl.toFixed(6),
                 pnlPercentage: parseFloat(pnlPercentage.toFixed(2))
               };
-            } catch (error) {
-              console.log(`Could not update price for ${position.tokenAddress}:`, (error as Error).message);
+              } catch (error) {
+                logger.warn({ err: error, tokenAddress: position.tokenAddress }, 'Could not update price');
               return position;
             }
           }
@@ -553,7 +557,7 @@ export class PositionsService {
 
       return response;
     } catch (error) {
-      console.error('Error getting positions:', error);
+      logger.error({ err: error }, 'Error getting positions');
       throw error;
     }
   }
@@ -588,14 +592,14 @@ export class PositionsService {
             pnlPercentage: parseFloat(pnlPercentage.toFixed(2))
           };
         } catch (error) {
-          console.log(`Could not update price for ${position.tokenAddress}:`, (error as Error).message);
+          logger.warn({ err: error, tokenAddress: position.tokenAddress }, 'Could not update price');
           return position;
         }
       }
 
       return position;
     } catch (error) {
-      console.error('Error getting position:', error);
+      logger.error({ err: error }, 'Error getting position');
       throw error;
     }
   }
@@ -616,9 +620,9 @@ export class PositionsService {
       );
 
       const [name, symbol, decimals] = await Promise.all([
-        tokenContract.name(),
-        tokenContract.symbol(),
-        tokenContract.decimals()
+        tokenContract.getFunction('name')() as Promise<string>,
+        tokenContract.getFunction('symbol')() as Promise<string>,
+        tokenContract.getFunction('decimals')() as Promise<number>
       ]);
 
       return {
@@ -627,7 +631,7 @@ export class PositionsService {
         decimals: Number(decimals)
       };
     } catch (error) {
-      console.log(`Could not fetch token info for ${tokenAddress}:`, (error as Error).message);
+      logger.warn({ err: error, tokenAddress }, 'Could not fetch token info');
       return {
         name: 'Unknown',
         symbol: 'Unknown',
@@ -652,7 +656,7 @@ export class PositionsService {
       const mockPrice = Math.random() * 100 + 0.001; // Random price between 0.001 and 100
       return mockPrice.toFixed(6);
     } catch (error) {
-      console.log(`Could not get price for ${tokenAddress}:`, (error as Error).message);
+      logger.warn({ err: error, tokenAddress }, 'Could not get price');
       return '0.000000';
     }
   }
@@ -688,10 +692,10 @@ export class PositionsService {
     orderType: 'buy' | 'sell',
     targetPrice: string,
     amount: string,
-    slippage?: string
+    _slippage?: string
   ): Promise<Position> {
     try {
-      console.log(`📋 Creating limit ${orderType} order for ${accountName}: ${amount} tokens at ${targetPrice} price`);
+      logger.info({ orderType, accountName, amount, targetPrice }, 'Creating limit order');
       
       // Get token information
       const tokenInfo = await this.getTokenInfo(tokenAddress);
@@ -723,12 +727,12 @@ export class PositionsService {
       this.positions.set(positionId, position);
       await this.savePositionsToStorage();
       
-      console.log(`✅ Limit ${orderType} order created: ${positionId}`);
-      console.log(`⏳ Waiting for ${tokenInfo.symbol} to reach ${targetPrice} price`);
+      logger.info({ orderType, positionId }, 'Limit order created');
+      logger.info({ symbol: tokenInfo.symbol, targetPrice }, 'Waiting for target price');
       
       return position;
     } catch (error) {
-      console.error('❌ Error creating limit order:', error);
+      logger.error({ err: error }, 'Error creating limit order');
       throw new Error(`Failed to create limit order: ${(error as Error).message}`);
     }
   }
@@ -761,10 +765,10 @@ export class PositionsService {
           
           if (isBuyOrder && currentPriceNum <= targetPrice) {
             shouldTrigger = true;
-            console.log(`🟢 Buy order triggered: ${position.tokenSymbol} at ${currentPrice} (target: ${targetPrice})`);
+            logger.info({ token: position.tokenSymbol, currentPrice, targetPrice }, 'Buy order triggered');
           } else if (isSellOrder && currentPriceNum >= targetPrice) {
             shouldTrigger = true;
-            console.log(`🔴 Sell order triggered: ${position.tokenSymbol} at ${currentPrice} (target: ${targetPrice})`);
+            logger.info({ token: position.tokenSymbol, currentPrice, targetPrice }, 'Sell order triggered');
           }
           
           if (shouldTrigger) {
@@ -781,18 +785,18 @@ export class PositionsService {
             triggeredOrders.push(updatedPosition);
           }
         } catch (error) {
-          console.log(`Could not check price for ${position.tokenAddress}:`, (error as Error).message);
+          logger.warn({ err: error, tokenAddress: position.tokenAddress }, 'Could not check price');
         }
       }
       
       if (triggeredOrders.length > 0) {
         await this.savePositionsToStorage();
-        console.log(`🎯 Triggered ${triggeredOrders.length} limit orders`);
+        logger.info({ count: triggeredOrders.length }, 'Triggered limit orders');
       }
       
       return triggeredOrders;
     } catch (error) {
-      console.error('❌ Error checking pending limit orders:', error);
+      logger.error({ err: error }, 'Error checking pending limit orders');
       throw new Error(`Failed to check pending limit orders: ${(error as Error).message}`);
     }
   }

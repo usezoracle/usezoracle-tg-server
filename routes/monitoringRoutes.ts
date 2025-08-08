@@ -1,5 +1,9 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+
+import { logger } from '../lib/logger.js';
 import { MonitoringService, DepositEvent } from '../services/monitoringService.js';
+import { validateParams, validateBody, hexAddressParamSchema, tokenBalanceBodySchema } from '../middleware/requestValidation.js';
 import { CopyTradingService } from '../services/copyTradingService.js';
 import { ApiResponse, Position, CopyTradeConfig, CopyTradeEvent } from '../types/index.js';
 
@@ -67,9 +71,9 @@ function getMonitoringService(): MonitoringService {
  *       500:
  *         description: Internal server error
  */
-router.post('/deposits', async (req: Request, res: Response) => {
+router.post('/deposits', validateBody(z.object({ walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/) })), async (req: Request, res: Response) => {
   try {
-    const { walletAddress, fromBlock } = req.body;
+    const { walletAddress, fromBlock: _fromBlock } = req.body;
 
     if (!walletAddress) {
       return res.status(400).json({
@@ -96,7 +100,7 @@ router.post('/deposits', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error in deposit monitoring:', error);
+    logger.error({ err: error }, 'Error in deposit monitoring');
     res.status(500).json({
       success: false,
       error: 'Failed to monitor deposits'
@@ -227,7 +231,7 @@ router.post('/copy-trading', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error in copy trading monitoring:', error);
+    logger.error({ err: error }, 'Error in copy trading monitoring');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to monitor copy trading'
@@ -289,7 +293,7 @@ router.get('/copy-trading/configs', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting copy trading configs:', error);
+    logger.error({ err: error }, 'Error getting copy trading configs');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get copy trading configurations'
@@ -351,7 +355,7 @@ router.get('/copy-trading/events', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting copy trading events:', error);
+    logger.error({ err: error }, 'Error getting copy trading events');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get copy trading events'
@@ -404,7 +408,7 @@ router.get('/copy-trading/events', async (req: Request, res: Response) => {
  */
 router.put('/copy-trading/configs/:configId', async (req: Request, res: Response) => {
   try {
-    const { configId } = req.params;
+    const configId = req.params.configId as string;
     const updates = req.body;
 
     const copyTradingService = CopyTradingService.getInstance();
@@ -418,7 +422,7 @@ router.put('/copy-trading/configs/:configId', async (req: Request, res: Response
 
     res.json(response);
   } catch (error) {
-    console.error('Error updating copy trading config:', error);
+    logger.error({ err: error }, 'Error updating copy trading config');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to update copy trading configuration'
@@ -458,7 +462,7 @@ router.put('/copy-trading/configs/:configId', async (req: Request, res: Response
  */
 router.delete('/copy-trading/configs/:configId', async (req: Request, res: Response) => {
   try {
-    const { configId } = req.params;
+    const configId = req.params.configId as string;
 
     const copyTradingService = CopyTradingService.getInstance();
     await copyTradingService.deleteCopyTradeConfig(configId);
@@ -470,7 +474,7 @@ router.delete('/copy-trading/configs/:configId', async (req: Request, res: Respo
 
     res.json(response);
   } catch (error) {
-    console.error('Error deleting copy trading config:', error);
+    logger.error({ err: error }, 'Error deleting copy trading config');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to delete copy trading configuration'
@@ -513,9 +517,9 @@ router.delete('/copy-trading/configs/:configId', async (req: Request, res: Respo
  *       500:
  *         description: Internal server error
  */
-router.get('/balance/:address', async (req: Request, res: Response) => {
+router.get('/balance/:address', validateParams(hexAddressParamSchema), async (req: Request, res: Response) => {
   try {
-    const { address } = req.params;
+    const address = req.params.address as string;
 
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
       return res.status(400).json({
@@ -537,7 +541,7 @@ router.get('/balance/:address', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting wallet balance:', error);
+    logger.error({ err: error }, 'Error getting wallet balance');
     res.status(500).json({
       success: false,
       error: 'Failed to get wallet balance'
@@ -591,9 +595,10 @@ router.get('/balance/:address', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/token-balance', async (req: Request, res: Response) => {
+router.post('/token-balance', validateBody(tokenBalanceBodySchema), async (req: Request, res: Response) => {
   try {
-    const { tokenAddress, walletAddress } = req.body;
+    const tokenAddress = req.body.tokenAddress as string;
+    const walletAddress = req.body.walletAddress as string;
 
     if (!tokenAddress || !walletAddress) {
       return res.status(400).json({
@@ -624,7 +629,7 @@ router.post('/token-balance', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting token balance:', error);
+    logger.error({ err: error }, 'Error getting token balance');
     res.status(500).json({
       success: false,
       error: 'Failed to get token balance'
@@ -670,9 +675,9 @@ router.post('/token-balance', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/recent-transactions/:address', async (req: Request, res: Response) => {
+router.get('/recent-transactions/:address', validateParams(hexAddressParamSchema), async (req: Request, res: Response) => {
   try {
-    const { address } = req.params;
+    const address = req.params.address as string;
     const limit = parseInt(req.query.limit as string) || 10;
 
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
@@ -692,7 +697,7 @@ router.get('/recent-transactions/:address', async (req: Request, res: Response) 
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting recent transactions:', error);
+    logger.error({ err: error }, 'Error getting recent transactions');
     res.status(500).json({
       success: false,
       error: 'Failed to get recent transactions'
@@ -746,7 +751,7 @@ router.post('/check-limit-orders', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error checking limit orders:', error);
+    logger.error({ err: error }, 'Error checking limit orders');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to check limit orders'
