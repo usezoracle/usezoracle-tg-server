@@ -5,6 +5,7 @@ import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
+import { existsSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
@@ -27,7 +28,7 @@ console.log('  BOT_TOKEN:', process.env.BOT_TOKEN ? '✅ Found' : '❌ Not found
 console.log('  MONGODB_URI:', process.env.MONGODB_URI ? '✅ Found' : '❌ Not found');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
 // MongoDB Connection (non-fatal if missing so /health still responds)
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -72,18 +73,28 @@ app.use(cors({
 app.use(express.json());
 app.use(limiter);
 
-// API Documentation
+// API Documentation (tolerate missing/invalid OpenAPI file in production)
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = process.env.NODE_ENV === 'production' 
-  ? process.cwd() 
+const __dirname = process.env.NODE_ENV === 'production'
+  ? process.cwd()
   : join(fileURLToPath(new URL('.', import.meta.url)));
 
-const swaggerDocument = YAML.load(join(__dirname, 'openapi.yaml'));
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "UseZoracle API Documentation",
-}));
+try {
+  const openapiPath = join(__dirname, 'openapi.yaml');
+  if (!existsSync(openapiPath)) {
+    console.warn(`⚠️  OpenAPI spec not found at ${openapiPath} - skipping /api-docs`);
+  } else {
+    const swaggerDocument = YAML.load(openapiPath);
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+      explorer: true,
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: "UseZoracle API Documentation",
+    }));
+    console.log('📚 Swagger UI mounted at /api-docs');
+  }
+} catch (error) {
+  console.warn('⚠️  Failed to initialize Swagger UI - skipping /api-docs:', (error as Error).message);
+}
 
 // Root route - basic status page
 app.get('/', (_req, res) => {
@@ -151,7 +162,7 @@ app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`✅ Health check: http://localhost:${PORT}/health`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
