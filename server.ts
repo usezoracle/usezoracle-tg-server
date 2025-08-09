@@ -96,6 +96,33 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Readiness check (used for deploy readiness)
+app.get("/ready", (req, res) => {
+  const envStatus = {
+    botToken: !!process.env.BOT_TOKEN,
+    mongodbUri: !!process.env.MONGODB_URI,
+    providerUrl: !!process.env.PROVIDER_URL,
+    cdp: {
+      apiKeyId: !!process.env.CDP_API_KEY_ID,
+      apiKeySecret: !!process.env.CDP_API_KEY_SECRET,
+      walletSecret: !!process.env.CDP_WALLET_SECRET,
+      network: process.env.CDP_NETWORK || 'base',
+    },
+  };
+
+  const ready = (!envStatus.mongodbUri || dbConnected) && envStatus.botToken;
+
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ready" : "not-ready",
+    timestamp: new Date().toISOString(),
+    db: {
+      enabled: dbEnabled,
+      connected: dbConnected,
+    },
+    env: envStatus,
+  });
+});
+
 // Routes
 app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionRoutes);
