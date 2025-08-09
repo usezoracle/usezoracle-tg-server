@@ -7,6 +7,8 @@ import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
 import { join } from "path";
 import { fileURLToPath } from "url";
+import rateLimit from "express-rate-limit";
+import mongoose from "mongoose";
 import { accountRoutes } from "./routes/accountRoutes.js";
 import { transactionRoutes } from "./routes/transactionRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -17,9 +19,44 @@ import { monitoringRoutes } from "./routes/monitoringRoutes.js";
 import { snipeRoutes } from "./routes/snipeRoutes.js";
 import { positionRoutes } from "./routes/positionRoutes.js";
 import { alertRoutes } from "./routes/alertRoutes.js";
+import { callbackRoutes } from "./routes/callbackRoutes.js";
+
+// Verify environment variables are loaded
+console.log('🔍 Environment check:');
+console.log('  BOT_TOKEN:', process.env.BOT_TOKEN ? '✅ Found' : '❌ Not found');
+console.log('  MONGODB_URI:', process.env.MONGODB_URI ? '✅ Found' : '❌ Not found');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI environment variable is required');
+  process.exit(1);
+}
+
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB successfully');
+  })
+  .catch((error) => {
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
+  });
+
+// Trust proxy for rate limiting behind ngrok
+app.set('trust proxy', 1);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Middleware
 app.use(cors({
@@ -28,6 +65,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
+app.use(limiter);
 
 // API Documentation
 const __filename = fileURLToPath(import.meta.url);
@@ -57,6 +95,7 @@ app.use("/api/monitoring", monitoringRoutes);
 app.use("/api/snipe", snipeRoutes);
 app.use("/api/positions", positionRoutes);
 app.use("/api/alerts", alertRoutes);
+app.use("/callback", callbackRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -73,3 +112,5 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
+
