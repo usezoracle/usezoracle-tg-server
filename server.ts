@@ -8,6 +8,8 @@ import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import helmet from "helmet";
 import YAML from "yamljs";
+import rateLimit from "express-rate-limit";
+import mongoose from "mongoose";
 
 import { accountRoutes } from "./routes/accountRoutes.js";
 import { transactionRoutes } from "./routes/transactionRoutes.js";
@@ -19,12 +21,46 @@ import { monitoringRoutes } from "./routes/monitoringRoutes.js";
 import { snipeRoutes } from "./routes/snipeRoutes.js";
 import { positionRoutes } from "./routes/positionRoutes.js";
 import { alertRoutes } from "./routes/alertRoutes.js";
+import { callbackRoutes } from "./routes/callbackRoutes.js";
 import { tokenDetailsRoutes } from "./routes/tokenDetailsRoutes.js";
 import { config } from './config/index.js';
 import { logger } from './lib/logger.js';
 
+// Verify environment variables are loaded
+logger.info('🔍 Environment check:');
+logger.info({ present: Boolean(process.env.BOT_TOKEN) }, 'BOT_TOKEN present');
+logger.info({ present: Boolean(process.env.MONGODB_URI) }, 'MONGODB_URI present');
+
 const app = express();
-const PORT = config.port;
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  logger.error('❌ MONGODB_URI environment variable is required');
+  process.exit(1);
+}
+
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    logger.info('✅ Connected to MongoDB successfully');
+  })
+  .catch((error: unknown) => {
+    logger.error({ err: error }, '❌ MongoDB connection error');
+    process.exit(1);
+  });
+
+// Trust proxy for rate limiting behind ngrok
+app.set('trust proxy', 1);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Middleware
 app.use(helmet());
@@ -34,6 +70,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
+app.use(limiter);
 
 // API Documentation
 const __filename = fileURLToPath(import.meta.url);
@@ -63,6 +100,7 @@ app.use("/api/monitoring", monitoringRoutes);
 app.use("/api/snipe", snipeRoutes);
 app.use("/api/positions", positionRoutes);
 app.use("/api/alerts", alertRoutes);
+app.use("/callback", callbackRoutes);
 app.use("/api/token-details", tokenDetailsRoutes);
 
 // Error handling
@@ -73,6 +111,7 @@ app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
+const PORT = config.port;
 app.listen(PORT, () => {
   logger.info({ port: PORT }, 'Server running');
   logger.info(`Health check: http://localhost:${PORT}/health`);
@@ -80,3 +119,5 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
+

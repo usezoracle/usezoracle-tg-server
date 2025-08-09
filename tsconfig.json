@@ -24,6 +24,7 @@
       "server.ts",
       "routes/**/*",
       "middleware/**/*",
+      "models/**/*",
       "services/**/*",
       "types/**/*"
     ],
