@@ -29,22 +29,26 @@ console.log('  MONGODB_URI:', process.env.MONGODB_URI ? '✅ Found' : '❌ Not f
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// MongoDB Connection
+// MongoDB Connection (non-fatal if missing so /health still responds)
 const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  console.error('❌ MONGODB_URI environment variable is required');
-  process.exit(1);
-}
+let dbConnected = false;
+let dbEnabled = false;
 
-// Connect to MongoDB
-mongoose.connect(MONGODB_URI)
-  .then(() => {
-    console.log('✅ Connected to MongoDB successfully');
-  })
-  .catch((error) => {
-    console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
-  });
+if (!MONGODB_URI) {
+  console.warn('⚠️  MONGODB_URI not set - starting without database connection');
+} else {
+  dbEnabled = true;
+  mongoose
+    .connect(MONGODB_URI)
+    .then(() => {
+      dbConnected = true;
+      console.log('✅ Connected to MongoDB successfully');
+    })
+    .catch((error) => {
+      dbConnected = false;
+      console.error('❌ MongoDB connection error (continuing without DB):', error);
+    });
+}
 
 // Trust proxy for rate limiting behind ngrok
 app.set('trust proxy', 1);
@@ -82,7 +86,14 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
 
 // Health check
 app.get("/health", (req, res) => {
-  res.json({ status: "OK", timestamp: new Date().toISOString() });
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    db: {
+      enabled: dbEnabled,
+      connected: dbConnected,
+    },
+  });
 });
 
 // Routes
