@@ -60,6 +60,7 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => ['/', '/health', '/ready', '/api-docs'].includes(req.path),
 });
 
 // Middleware
@@ -83,6 +84,13 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "UseZoracle API Documentation",
 }));
+
+// Root route - basic status page
+app.get('/', (_req, res) => {
+  res.type('html').send(
+    `<pre>UseZoracle API is running\n\n- Health: <a href="/health">/health</a>\n- Ready: <a href="/ready">/ready</a>\n- Docs: <a href="/api-docs">/api-docs</a></pre>`
+  );
+});
 
 // Health check
 app.get("/health", (req, res) => {
