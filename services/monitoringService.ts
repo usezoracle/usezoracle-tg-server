@@ -329,24 +329,28 @@ export class MonitoringService {
         throw new Error(`Insufficient ETH balance. Required: ${amount} ETH, Available: ${ethBalance?.amount.formatted || '0'} ETH`);
       }
 
-      // Execute the snipe transaction using CDP
-      const result = await cdpService.sendTransaction(accountName, {
-        to: tokenAddress as `0x${string}`,
-        value: amount,
+      // Execute snipe via swap (ETH->token) to ensure gas estimation works on non-payable tokens
+      const { SwapService } = await import('./swapService.js');
+      const swapService = SwapService.getInstance();
+      const fromToken = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+      const slippageBps = Math.round((slippage || 0.05) * 10000);
+      const { parseEther } = await import('viem');
+      const wei = parseEther(amount).toString();
+      const swap = await swapService.executeSwap({
+        accountName,
+        fromToken,
+        toToken: tokenAddress,
+        fromAmount: wei,
+        slippageBps,
         network: "base"
       });
 
-      logger.info({ tx: result.data.transactionHash }, 'Snipe transaction executed');
+      logger.info({ tx: (swap as any).data?.transactionHash }, 'Snipe transaction executed');
 
       // Create position in positions service
       const { PositionsService } = await import('./positionsService.js');
       const positionsService = new PositionsService();
-      await positionsService.addPosition(
-        accountName,
-        tokenAddress,
-        amount,
-        result.data.transactionHash
-      );
+      await positionsService.addPosition(accountName, tokenAddress, amount, (swap as any).data?.transactionHash);
 
       // Create trade alert for successful snipe
       const { AlertsService } = await import('./alertsService.js');
@@ -359,9 +363,9 @@ export class MonitoringService {
       );
 
       const snipeEvent: SnipeEvent = {
-        tokenAddress: tokenAddress,
-        amount: amount,
-        transactionHash: result.data.transactionHash,
+        tokenAddress,
+        amount,
+        transactionHash: (swap as any).data?.transactionHash,
         timestamp: Math.floor(Date.now() / 1000)
       };
 

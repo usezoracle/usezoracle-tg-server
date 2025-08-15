@@ -84,10 +84,8 @@ export const transferBodySchema = z.object({
   accountName: z.string().min(1),
   to: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address'),
   amount: z.string().min(1),
-  token: z.union([
-    z.literal('ETH'),
-    z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid token address')
-  ]),
+  // CDP transfer currently supports 'eth' | 'usdc'
+  token: z.enum(['eth', 'usdc']),
   network: z.enum(['base', 'base-sepolia', 'ethereum']).optional()
 });
 

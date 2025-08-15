@@ -599,6 +599,15 @@ export class AlertsService {
    * Get token information
    */
   private async getTokenInfo(tokenAddress: string): Promise<{ name: string; symbol: string; decimals: number }> {
+    // Handle native ETH pseudo-address
+    if (tokenAddress.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
+      return {
+        name: 'Ethereum',
+        symbol: 'ETH',
+        decimals: 18
+      };
+    }
+
     try {
       const tokenContract = new ethers.Contract(
         tokenAddress,

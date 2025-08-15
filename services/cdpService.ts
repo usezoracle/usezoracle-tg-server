@@ -9,6 +9,7 @@ let cdp: CdpClient;
 let publicClient: any;
 
 const initializeClient = () => {
+
   // Debug environment variables
   logger.debug({
     hasApiKeyId: !!process.env.CDP_API_KEY_ID,

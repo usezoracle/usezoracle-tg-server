@@ -1,0 +1,338 @@
+# Webhook Integration Guide
+
+This guide explains how to integrate with the CDP (Coinbase Developer Platform) webhook system for real-time copy trading notifications.
+
+## Overview
+
+The copy trading system uses CDP webhooks to monitor target wallet addresses in real-time. When a target wallet makes a trade, the webhook sends a notification to our system, which then executes a copy trade.
+
+## CDP Webhook Configuration
+
+### Webhook Details
+- **Event Type**: `wallet_activity`
+- **Network**: `base-mainnet`
+- **Notification URL**: `https://your-domain.com/webhooks/cdp`
+- **Addresses**: Automatically managed list of all copy-trade target wallets
+
+### Environment Variables
+```bash
+CDP_WEBHOOK_ID=your_webhook_id_here
+CDP_API_KEY_ID=your_api_key_id
+CDP_API_KEY_SECRET=your_api_key_secret
+CDP_WALLET_SECRET=your_wallet_secret
+CDP_API_KEY_JSON_PATH=path/to/cdp_api_key.json
+```
+
+## Integration Process
+
+### 1. Create Copy-Trade Configuration
+
+When you create a copy-trade configuration, the system automatically:
+
+1. **Creates the copy-trade config** in the database
+2. **Updates the CDP webhook** with the new target wallet address
+3. **Ensures real-time monitoring** of the wallet
+
+```bash
+curl -X POST "http://localhost:3000/api/monitoring/copy-trading" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "walletAddress": "0x1234567890123456789012345678901234567890",
+    "accountName": "zoracle-6082810996",
+    "delegationAmount": "0.1",
+    "maxSlippage": 0.05
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "config": {
+      "id": "config_id",
+      "accountName": "zoracle-6082810996",
+      "targetWalletAddress": "0x1234567890123456789012345678901234567890",
+      "delegationAmount": "0.1",
+      "maxSlippage": 0.05,
+      "isActive": true
+    },
+    "events": []
+  },
+  "message": "Copy trading setup complete. Found 0 buy transactions to copy."
+}
+```
+
+### 2. Verify Webhook Update
+
+Check if the webhook was updated with the new address:
+
+```bash
+curl -X GET "http://localhost:3000/api/cdp/webhooks/YOUR_WEBHOOK_ID" | jq
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "689980a3f3e21b15f0b52893",
+    "name": "Wallet Activity Webhook",
+    "url": "https://your-domain.com/webhooks/cdp",
+    "addresses": [
+      "0x1234567890123456789012345678901234567890"
+    ],
+    "addressCount": 1,
+    "eventType": "wallet_activity",
+    "networkId": "base-mainnet",
+    "status": "active"
+  }
+}
+```
+
+### 3. Manual Webhook Synchronization
+
+If webhook addresses are out of sync, manually update them:
+
+```bash
+curl -X POST "http://localhost:3000/api/monitoring/webhook/update-addresses"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "webhookId": "689980a3f3e21b15f0b52893",
+    "addressCount": 2,
+    "addresses": [
+      "0x1234567890123456789012345678901234567890",
+      "0x0987654321098765432109876543210987654321"
+    ],
+    "updatedAt": "2025-01-15T06:19:46.529Z"
+  },
+  "message": "Webhook addresses updated successfully. Now monitoring 2 target wallets."
+}
+```
+
+## API Endpoints
+
+### Copy Trading Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/monitoring/copy-trading` | POST | Create copy-trade config and update webhook |
+| `/api/monitoring/copy-trading/configs` | GET | Get copy-trade configurations |
+| `/api/monitoring/webhook/update-addresses` | POST | Manually sync webhook addresses |
+
+### CDP Webhook Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/cdp/webhooks` | GET | List all CDP webhooks |
+| `/api/cdp/webhooks/{id}` | GET | Get specific webhook details |
+| `/api/cdp/webhooks/{id}/addresses` | PUT | Update webhook addresses |
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Webhook Addresses Not Updated
+
+**Problem**: New copy-trade config created but webhook doesn't include the address.
+
+**Solution**: 
+```bash
+# Check current webhook addresses
+curl -X GET "http://localhost:3000/api/cdp/webhooks/YOUR_WEBHOOK_ID" | jq '.data.addresses'
+
+# Manually sync webhook addresses
+curl -X POST "http://localhost:3000/api/monitoring/webhook/update-addresses"
+```
+
+#### 2. Webhook Not Found
+
+**Problem**: `Webhook not found` error when accessing webhook endpoints.
+
+**Solution**:
+```bash
+# List all available webhooks
+curl -X GET "http://localhost:3000/api/cdp/webhooks" | jq
+
+# Verify webhook ID in environment variables
+echo $CDP_WEBHOOK_ID
+```
+
+#### 3. No Copy-Trade Notifications
+
+**Problem**: Webhook exists but no copy-trade notifications are received.
+
+**Solution**:
+1. **Check webhook status**:
+   ```bash
+   curl -X GET "http://localhost:3000/api/cdp/webhooks/YOUR_WEBHOOK_ID" | jq '.data.status'
+   ```
+
+2. **Verify target addresses**:
+   ```bash
+   curl -X GET "http://localhost:3000/api/cdp/webhooks/YOUR_WEBHOOK_ID" | jq '.data.addresses'
+   ```
+
+3. **Check copy-trade configs**:
+   ```bash
+   curl -X GET "http://localhost:3000/api/monitoring/copy-trading/configs?accountName=YOUR_ACCOUNT" | jq
+   ```
+
+#### 4. Webhook Update Fails
+
+**Problem**: Error when updating webhook addresses.
+
+**Solution**:
+1. **Check CDP credentials**:
+   ```bash
+   # Verify environment variables are set
+   echo $CDP_API_KEY_ID
+   echo $CDP_API_KEY_SECRET
+   echo $CDP_WALLET_SECRET
+   ```
+
+2. **Check API key file**:
+   ```bash
+   # Verify CDP API key file exists
+   ls -la $CDP_API_KEY_JSON_PATH
+   ```
+
+## Best Practices
+
+### 1. Regular Webhook Monitoring
+
+Monitor webhook health regularly:
+
+```bash
+# Create a monitoring script
+#!/bin/bash
+WEBHOOK_ID="your_webhook_id"
+RESPONSE=$(curl -s -X GET "http://localhost:3000/api/cdp/webhooks/$WEBHOOK_ID")
+STATUS=$(echo $RESPONSE | jq -r '.data.status')
+ADDRESS_COUNT=$(echo $RESPONSE | jq -r '.data.addressCount')
+
+if [ "$STATUS" != "active" ]; then
+  echo "WARNING: Webhook status is $STATUS"
+fi
+
+echo "Webhook monitoring $ADDRESS_COUNT addresses"
+```
+
+### 2. Address Synchronization
+
+Always verify webhook addresses after creating copy-trade configs:
+
+```bash
+# After creating copy-trade config
+curl -X POST "http://localhost:3000/api/monitoring/copy-trading" \
+  -H "Content-Type: application/json" \
+  -d '{"walletAddress": "0x...", "accountName": "account", "delegationAmount": "0.1"}'
+
+# Verify webhook update
+curl -X GET "http://localhost:3000/api/cdp/webhooks/YOUR_WEBHOOK_ID" | jq '.data.addresses'
+```
+
+### 3. Error Handling
+
+Implement proper error handling in your integration:
+
+```javascript
+// Example error handling
+async function createCopyTrade(walletAddress, accountName, delegationAmount) {
+  try {
+    const response = await fetch('/api/monitoring/copy-trading', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress, accountName, delegationAmount })
+    });
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      console.error('Copy-trade creation failed:', result.error);
+      return false;
+    }
+    
+    // Verify webhook update
+    const webhookResponse = await fetch(`/api/cdp/webhooks/${webhookId}`);
+    const webhookData = await webhookResponse.json();
+    
+    if (!webhookData.data.addresses.includes(walletAddress.toLowerCase())) {
+      console.warn('Webhook address not updated, syncing manually...');
+      await fetch('/api/monitoring/webhook/update-addresses', { method: 'POST' });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Integration error:', error);
+    return false;
+  }
+}
+```
+
+## Security Considerations
+
+### 1. Webhook Authentication
+
+- Use signature verification for webhook callbacks
+- Implement rate limiting on webhook endpoints
+- Validate webhook payload integrity
+
+### 2. API Key Management
+
+- Store CDP API keys securely
+- Rotate API keys regularly
+- Use environment variables for sensitive data
+
+### 3. Address Validation
+
+- Always validate wallet addresses before adding to webhook
+- Use checksum addresses for consistency
+- Implement address format validation
+
+## Monitoring and Alerts
+
+### 1. Webhook Health Checks
+
+Set up monitoring for webhook health:
+
+```bash
+# Health check script
+curl -f -X GET "http://localhost:3000/api/cdp/webhooks/YOUR_WEBHOOK_ID" > /dev/null
+if [ $? -ne 0 ]; then
+  echo "ALERT: Webhook health check failed"
+  # Send alert notification
+fi
+```
+
+### 2. Address Count Monitoring
+
+Monitor the number of addresses in webhooks:
+
+```bash
+# Get address count
+ADDRESS_COUNT=$(curl -s -X GET "http://localhost:3000/api/cdp/webhooks/YOUR_WEBHOOK_ID" | jq -r '.data.addressCount')
+
+# Alert if count is unexpected
+if [ "$ADDRESS_COUNT" -eq 0 ]; then
+  echo "ALERT: No addresses in webhook"
+fi
+```
+
+### 3. Copy-Trade Config Monitoring
+
+Monitor copy-trade configurations:
+
+```bash
+# Check active configs
+ACTIVE_CONFIGS=$(curl -s -X GET "http://localhost:3000/api/monitoring/copy-trading/configs?accountName=YOUR_ACCOUNT" | jq '.data | length')
+
+echo "Active copy-trade configs: $ACTIVE_CONFIGS"
+```
+
+This comprehensive guide should help you successfully integrate with the webhook system for copy trading functionality.

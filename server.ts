@@ -23,6 +23,8 @@ import { positionRoutes } from "./routes/positionRoutes.js";
 import { alertRoutes } from "./routes/alertRoutes.js";
 import { callbackRoutes } from "./routes/callbackRoutes.js";
 import { tokenDetailsRoutes } from "./routes/tokenDetailsRoutes.js";
+import { webhooksCdpRoutes } from "./routes/webhooksCdpRoutes.js";
+import { cdpWebhookMgmtRoutes } from "./routes/cdpWebhookMgmtRoutes.js";
 import { config } from './config/index.js';
 import { logger } from './lib/logger.js';
 
@@ -102,6 +104,8 @@ app.use("/api/positions", positionRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/callback", callbackRoutes);
 app.use("/api/token-details", tokenDetailsRoutes);
+app.use("/webhooks/cdp", webhooksCdpRoutes);
+app.use("/api/cdp/webhooks", cdpWebhookMgmtRoutes);
 
 // Error handling
 app.use(errorHandler);
