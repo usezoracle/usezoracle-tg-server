@@ -1,5 +1,6 @@
 import { fileURLToPath } from "url";
 import { join } from "path";
+import { existsSync } from "fs";
 
 import dotenv from "dotenv";
 dotenv.config();
