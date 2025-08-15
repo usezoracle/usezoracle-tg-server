@@ -26,7 +26,8 @@
       "middleware/**/*",
       "models/**/*",
       "services/**/*",
-      "types/**/*"
+      "types/**/*",
+      "lib/**/*"
     ],
     "exclude": [
       "node_modules",
