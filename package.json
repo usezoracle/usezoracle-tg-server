@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "tsx watch server.ts",
-    "prebuild": "node -e \"const fs=require('fs'); if(!fs.existsSync('lib/logger.js')) fs.copyFileSync('lib/logger.ts', 'lib/logger.js'); if(!fs.existsSync('lib/txParsing.js')) fs.copyFileSync('lib/txParsing.ts', 'lib/txParsing.js');\"",
+    "prebuild": "node scripts/prebuild.js",
     "build": "tsc",
     "postbuild": "rm -f lib/*.js",
     "postinstall": "npm run build",
