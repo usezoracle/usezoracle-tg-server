@@ -19,7 +19,7 @@ router.post("/", async (req, res) => {
   const contractAddress = data.contractAddress || data.to || '';
 
   // Hardcoded token information for ETH and USDC
-  let tokenInfo = null;
+  const tokenInfo = null;
   let isTargetToken = false;
   
   if (eventType === 'erc20_transfer' && contractAddress && contractAddress !== '0x0000000000000000000000000000000000000000') {

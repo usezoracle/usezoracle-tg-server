@@ -14,6 +14,7 @@ export interface IUser extends Document {
     notifications: boolean;
     language: string;
     timezone: string;
+    cdpAccountName?: string;
   };
 }
 
@@ -55,6 +56,10 @@ const UserSchema = new Schema<IUser>(
       timezone: {
         type: String,
         default: "UTC",
+      },
+      cdpAccountName: {
+        type: String,
+        sparse: true,
       },
     },
   },

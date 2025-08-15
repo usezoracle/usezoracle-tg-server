@@ -1,0 +1,138 @@
+# Copy Trading API
+
+Copy trading allows you to automatically copy trades from target wallets. Alerts are created automatically when copy trades are executed or when target wallets make trades.
+
+## Overview
+
+Copy trading alerts are **automatically created** when:
+1. A copy trade is successfully executed
+2. A target wallet makes a trade (even if no copy trade is executed)
+
+You do **not** need to manually create copy trading alerts. Instead, you set up copy trading configurations that automatically monitor target wallets.
+
+## Setup Copy Trading Configuration
+
+### POST `/api/alerts/setup-copy-trading`
+
+Create a copy trading configuration that will automatically monitor a target wallet and create alerts when trades are detected.
+
+**Request Body:**
+```json
+{
+  "accountName": "Bright",
+  "targetWalletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+  "delegationAmount": "0.1",
+  "maxSlippage": 0.05
+}
+```
+
+**Parameters:**
+- `accountName` (required): The account name that will copy trade
+- `targetWalletAddress` (required): The wallet address to monitor and copy
+- `delegationAmount` (required): The maximum amount of ETH to use for copy trading
+- `maxSlippage` (optional): Maximum slippage tolerance (default 0.05 = 5%)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "copy_1703123456789_abc123def",
+    "accountName": "Bright",
+    "targetWalletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+    "delegationAmount": "0.1",
+    "maxSlippage": 0.05,
+    "isActive": true,
+    "createdAt": 1703123456789,
+    "totalExecutedTrades": 0,
+    "totalSpent": "0"
+  },
+  "message": "Copy trading configuration created for Bright monitoring 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+}
+```
+
+## How It Works
+
+### 1. Configuration Setup
+When you create a copy trading configuration:
+- The system starts monitoring the target wallet address
+- Alerts are automatically created when the target wallet makes trades
+- Copy trades are executed automatically when conditions are met
+
+### 2. Automatic Alert Creation
+Copy trading alerts are created automatically in these scenarios:
+
+**Scenario A: Copy Trade Executed**
+- When a copy trade is successfully executed
+- Alert type: `wallet_activity`
+- Includes: token address, amount, transaction hash
+
+**Scenario B: Target Wallet Activity**
+- When a target wallet makes a trade (even if no copy trade is executed)
+- Alert type: `wallet_activity`
+- Includes: token address, amount, transaction hash
+
+### 3. Alert Details
+Each copy trading alert includes:
+- `accountName`: The account monitoring the wallet
+- `alertType`: Always `wallet_activity` for copy trading
+- `walletAddress`: The target wallet being monitored
+- `tokenAddress`: The token that was traded
+- `tokenSymbol`: The token symbol
+- `amount`: The amount traded
+- `isActive`: Whether the alert is active
+- `createdAt`: When the alert was created
+
+## Monitoring Target Wallets
+
+The system automatically monitors target wallets by:
+1. Scanning recent blockchain transactions
+2. Detecting buy transactions (direct ETH transfers or swap transactions)
+3. Extracting token information from transactions
+4. Creating alerts for all accounts monitoring that wallet
+
+## Example Workflow
+
+1. **Setup Configuration:**
+   ```bash
+   POST /api/alerts/setup-copy-trading
+   {
+     "accountName": "Bright",
+     "targetWalletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+     "delegationAmount": "0.1"
+   }
+   ```
+
+2. **Automatic Monitoring:**
+   - System monitors the target wallet
+   - When target wallet buys a token, alerts are created automatically
+   - Copy trades are executed if conditions are met
+
+3. **View Alerts:**
+   ```bash
+   GET /api/alerts?accountName=Bright&alertType=copy
+   ```
+
+## Deprecated Endpoint
+
+The old `/api/alerts/copy-trading` endpoint is deprecated and returns a 410 status code. Copy trading alerts are now created automatically by the copy trading service.
+
+## Error Handling
+
+Common errors:
+- `Insufficient ETH balance`: Not enough ETH in the account for delegation
+- `Copy trade configuration not found`: Configuration doesn't exist
+- `Insufficient delegation amount`: Not enough remaining delegation for copy trade
+
+## Best Practices
+
+1. **Start Small**: Begin with small delegation amounts to test the system
+2. **Monitor Performance**: Check alerts regularly to see how copy trading is performing
+3. **Adjust Settings**: Modify slippage and delegation amounts based on performance
+4. **Multiple Configurations**: You can monitor multiple target wallets with different configurations
+
+## Related Endpoints
+
+- `GET /api/alerts` - View all alerts including copy trading alerts
+- `DELETE /api/alerts/{alertId}` - Delete specific alerts
+- `POST /api/alerts/check` - Manually check and trigger alerts 

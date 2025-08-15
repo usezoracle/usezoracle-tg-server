@@ -1,12 +1,15 @@
 import { Router } from "express";
+
 import { CdpService } from "../services/cdpService.js";
+import { validateParams, accountNameParamSchema } from "../middleware/requestValidation.js";
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 const cdpService = CdpService.getInstance();
 
-router.get("/:accountName", async (req, res, next) => {
+router.get("/:accountName", validateParams(accountNameParamSchema), async (req, res, next) => {
   try {
-    const { accountName } = req.params;
+    const accountName = req.params.accountName as string;
 
     // First check if the account exists
     try {
@@ -24,7 +27,7 @@ router.get("/:accountName", async (req, res, next) => {
     }
 
     const result = await cdpService.getBalances(accountName);
-    console.log(result);
+    logger.info({ accountName }, 'Balances fetched');
     res.json(result);
   } catch (error) {
     next(error);

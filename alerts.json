@@ -1,51 +1,825 @@
 {
   "priceAlerts": {},
   "portfolioAlerts": {
-    "portfolio-Bright-value_increase-1754527321491": {
-      "id": "portfolio-Bright-value_increase-1754527321491",
+    "portfolio-Bright-value_increase-1754561420662": {
+      "id": "portfolio-Bright-value_increase-1754561420662",
       "accountName": "Bright",
       "alertType": "value_increase",
       "threshold": "1000.00",
       "condition": "above",
       "isActive": true,
-      "createdAt": 1754527321
+      "createdAt": 1754561420
     }
   },
   "tradeAlerts": {
-    "trade-Bright-large_trade-1754527321794": {
-      "id": "trade-Bright-large_trade-1754527321794",
+    "trade-Bright-large_trade-1754562108549": {
+      "id": "trade-Bright-large_trade-1754562108549",
       "accountName": "Bright",
       "alertType": "large_trade",
       "tokenAddress": "0x4200000000000000000000000000000000000006",
       "tokenSymbol": "WETH",
       "amount": "0.5",
       "isActive": true,
-      "createdAt": 1754527321
-    }
-  },
-  "marketAlerts": {
-    "market-price_spike-1754527322291": {
-      "id": "market-price_spike-1754527322291",
-      "alertType": "price_spike",
-      "tokenAddress": "0x4200000000000000000000000000000000000006",
-      "tokenSymbol": "WETH",
-      "threshold": "100.00",
-      "condition": "above",
+      "createdAt": 1754562109
+    },
+    "trade-Dayo-successful_trade-1755033431132": {
+      "id": "trade-Dayo-successful_trade-1755033431132",
+      "accountName": "Dayo",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
       "isActive": true,
-      "createdAt": 1754527322
+      "createdAt": 1755033431
+    },
+    "trade-Dayo-successful_trade-1755033446215": {
+      "id": "trade-Dayo-successful_trade-1755033446215",
+      "accountName": "Dayo",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755033446
+    },
+    "trade-Dayo-successful_trade-1755033449830": {
+      "id": "trade-Dayo-successful_trade-1755033449830",
+      "accountName": "Dayo",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755033450
+    },
+    "trade-Dayo-successful_trade-1755033451363": {
+      "id": "trade-Dayo-successful_trade-1755033451363",
+      "accountName": "Dayo",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755033451
+    },
+    "trade-Dayo-successful_trade-1755033460151": {
+      "id": "trade-Dayo-successful_trade-1755033460151",
+      "accountName": "Dayo",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755033461
+    },
+    "trade-Dayo-failed_transaction-1755033478496": {
+      "id": "trade-Dayo-failed_transaction-1755033478496",
+      "accountName": "Dayo",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755033478
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049390698": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049390698",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049391
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049393345": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049393345",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049393
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049395624": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049395624",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049395
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049398044": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049398044",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049398
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049400393": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049400393",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049400
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049402664": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049402664",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049402
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049404513": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049404513",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049404
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049405156": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049405156",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049405
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049406733": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049406733",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049407
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049407484": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049407484",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049407
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049408955": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049408955",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049409
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049409714": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049409714",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049409
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049411347": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049411347",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049411
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049411853": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049411853",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049412
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049413604": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049413604",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049413
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049414073": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049414073",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049414
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049416893": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049416893",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049417
+    },
+    "trade-Dayo-successful_trade-1755049418443": {
+      "id": "trade-Dayo-successful_trade-1755049418443",
+      "accountName": "Dayo",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049418
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049419580": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049419580",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049419
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049421424": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049421424",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049421
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049421783": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049421783",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049422
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049424073": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049424073",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049424
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049424812": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049424812",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049425
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049426333": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049426333",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049426
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049427013": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049427013",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049427
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049428562": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049428562",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049428
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049429213": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049429213",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049429
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049431462": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049431462",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049431
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049433624": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049433624",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049433
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049435861": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049435861",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049436
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049438010": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049438010",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049438
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049440129": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049440129",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049440
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049440883": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049440883",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049441
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049442340": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049442340",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049442
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049443392": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049443392",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049443
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049444579": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049444579",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049444
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049445630": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049445630",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049445
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049447843": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049447843",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049448
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049450082": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049450082",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049450
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049452312": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049452312",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049452
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049454639": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049454639",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049454
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049456953": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049456953",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049457
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049459312": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049459312",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049459
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049461895": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049461895",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049462
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049463719": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049463719",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049464
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049465000": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049465000",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049465
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049466319": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049466319",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049466
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049468869": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049468869",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049469
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049471120": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049471120",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049471
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049473393": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049473393",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049473
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049475552": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049475552",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049475
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049477779": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049477779",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049478
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049479918": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049479918",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049480
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049482174": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049482174",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755049482
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049484355": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049484355",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049484
+    },
+    "trade-zoracle-6082810996-failed_transaction-1755049486566": {
+      "id": "trade-zoracle-6082810996-failed_transaction-1755049486566",
+      "accountName": "zoracle-6082810996",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755049486
+    },
+    "trade-zoracle-6082810996-successful_trade-1755144394368": {
+      "id": "trade-zoracle-6082810996-successful_trade-1755144394368",
+      "accountName": "zoracle-6082810996",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755144394
+    },
+    "trade-zoracle-6082810996-successful_trade-1755144395082": {
+      "id": "trade-zoracle-6082810996-successful_trade-1755144395082",
+      "accountName": "zoracle-6082810996",
+      "alertType": "successful_trade",
+      "tokenAddress": "0x52d9100e1962b868b96bd736d7ff16d9fc4dd234",
+      "tokenSymbol": "xeusthegreat",
+      "amount": "0.00001",
+      "isActive": true,
+      "createdAt": 1755144395
+    },
+    "trade-zoracle-6082810996-successful_trade-1755239079007": {
+      "id": "trade-zoracle-6082810996-successful_trade-1755239079007",
+      "accountName": "zoracle-6082810996",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "10000000000000",
+      "isActive": true,
+      "createdAt": 1755239079
+    },
+    "trade-zoracle-6082810996-successful_trade-1755239086651": {
+      "id": "trade-zoracle-6082810996-successful_trade-1755239086651",
+      "accountName": "zoracle-6082810996",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "49000000000000",
+      "isActive": true,
+      "createdAt": 1755239086
+    },
+    "trade-zoracle-6082810996-successful_trade-1755239092729": {
+      "id": "trade-zoracle-6082810996-successful_trade-1755239092729",
+      "accountName": "zoracle-6082810996",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "49000000000000",
+      "isActive": true,
+      "createdAt": 1755239092
+    },
+    "trade-Dayo-successful_trade-1755260251583": {
+      "id": "trade-Dayo-successful_trade-1755260251583",
+      "accountName": "Dayo",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755260252
+    },
+    "trade-Dayo-successful_trade-1755260252412": {
+      "id": "trade-Dayo-successful_trade-1755260252412",
+      "accountName": "Dayo",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755260252
+    },
+    "trade-zoracle-6082810996-successful_trade-1755260261700": {
+      "id": "trade-zoracle-6082810996-successful_trade-1755260261700",
+      "accountName": "zoracle-6082810996",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "8000000000000",
+      "isActive": true,
+      "createdAt": 1755260262
+    },
+    "trade-zoracle-6082810996-successful_trade-1755260264277": {
+      "id": "trade-zoracle-6082810996-successful_trade-1755260264277",
+      "accountName": "zoracle-6082810996",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "8000000000000",
+      "isActive": true,
+      "createdAt": 1755260264
+    },
+    "trade-zoracle-6082810996-successful_trade-1755260273343": {
+      "id": "trade-zoracle-6082810996-successful_trade-1755260273343",
+      "accountName": "zoracle-6082810996",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "8000000000000",
+      "isActive": true,
+      "createdAt": 1755260273
+    },
+    "trade-Dayo-failed_transaction-1755260432576": {
+      "id": "trade-Dayo-failed_transaction-1755260432576",
+      "accountName": "Dayo",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "20000000000000",
+      "isActive": true,
+      "createdAt": 1755260433
     }
   },
+  "marketAlerts": {},
   "copyTradingAlerts": {
-    "copy-Bright-wallet_activity-1754527322891": {
-      "id": "copy-Bright-wallet_activity-1754527322891",
-      "accountName": "Bright",
+    "copy-Dayo-wallet_activity-1755033445022": {
+      "id": "copy-Dayo-wallet_activity-1755033445022",
+      "accountName": "Dayo",
       "alertType": "wallet_activity",
-      "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-      "tokenAddress": "0x4200000000000000000000000000000000000006",
-      "tokenSymbol": "WETH",
-      "amount": "0.1",
+      "walletAddress": "0xec88d4516ebc66ef88b5ff11255d5a30c8232cd1",
+      "tokenAddress": "0x19830739b089e6c310822bc67eeba9f79be8ae70",
+      "tokenSymbol": "folajindayo",
+      "amount": "0.00001",
       "isActive": true,
-      "createdAt": 1754527323
+      "createdAt": 1755033445
+    },
+    "copy-Dayo-wallet_activity-1755049422583": {
+      "id": "copy-Dayo-wallet_activity-1755049422583",
+      "accountName": "Dayo",
+      "alertType": "wallet_activity",
+      "walletAddress": "0xec88d4516ebc66ef88b5ff11255d5a30c8232cd1",
+      "tokenAddress": "0x9d5899ee6955fd74388781d99b789dcd347ce9a3",
+      "tokenSymbol": "pipsandbills",
+      "amount": "0.00001",
+      "isActive": true,
+      "createdAt": 1755049422
+    },
+    "copy-zoracle-6082810996-wallet_activity-1755239082342": {
+      "id": "copy-zoracle-6082810996-wallet_activity-1755239082342",
+      "accountName": "zoracle-6082810996",
+      "alertType": "wallet_activity",
+      "walletAddress": "0xd4c7db710f9cd4962231a3c564f07dda6866288d",
+      "tokenAddress": "0x19830739b089e6c310822bc67eeba9f79be8ae70",
+      "tokenSymbol": "folajindayo",
+      "amount": "0.00001",
+      "isActive": true,
+      "createdAt": 1755239082
+    },
+    "copy-zoracle-6082810996-wallet_activity-1755239089880": {
+      "id": "copy-zoracle-6082810996-wallet_activity-1755239089880",
+      "accountName": "zoracle-6082810996",
+      "alertType": "wallet_activity",
+      "walletAddress": "0xec88d4516ebc66ef88b5ff11255d5a30c8232cd1",
+      "tokenAddress": "0x19830739b089e6c310822bc67eeba9f79be8ae70",
+      "tokenSymbol": "folajindayo",
+      "amount": "0.000049",
+      "isActive": true,
+      "createdAt": 1755239090
+    },
+    "copy-Dayo-wallet_activity-1755260256794": {
+      "id": "copy-Dayo-wallet_activity-1755260256794",
+      "accountName": "Dayo",
+      "alertType": "wallet_activity",
+      "walletAddress": "0x8ffc815dd841bf08c79357630c62d1b4f6446600",
+      "tokenAddress": "0x19830739b089e6c310822bc67eeba9f79be8ae70",
+      "tokenSymbol": "folajindayo",
+      "amount": "0.00002",
+      "isActive": true,
+      "createdAt": 1755260256
+    },
+    "copy-zoracle-6082810996-wallet_activity-1755260274928": {
+      "id": "copy-zoracle-6082810996-wallet_activity-1755260274928",
+      "accountName": "zoracle-6082810996",
+      "alertType": "wallet_activity",
+      "walletAddress": "0x8ffc815dd841bf08c79357630c62d1b4f6446600",
+      "tokenAddress": "0x1111111111166b7fe7bd91427724b487980afc69",
+      "tokenSymbol": "ZORA",
+      "amount": "0.000008",
+      "isActive": true,
+      "createdAt": 1755260275
     }
   }
 }

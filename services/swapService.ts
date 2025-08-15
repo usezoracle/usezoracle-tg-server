@@ -1,18 +1,14 @@
 import { CdpClient } from "@coinbase/cdp-sdk";
-import {
-  parseUnits,
-  createPublicClient,
-  http,
-  erc20Abi,
-  encodeFunctionData,
-  formatEther,
-  type Address,
-} from "viem";
+import { createPublicClient, http, erc20Abi, encodeFunctionData, type Address } from "viem";
 import { base } from "viem/chains";
+
+import { config } from '../config/index.js';
+import { logger } from '../lib/logger.js';
+
 import { CdpService } from "./cdpService.js";
 
 // Define supported networks
-type EvmSwapsNetwork = "base" | "ethereum";
+export type EvmSwapsNetwork = "base" | "ethereum";
 
 // Permit2 contract address is the same across all networks
 const PERMIT2_ADDRESS: Address = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
@@ -24,7 +20,7 @@ export class SwapService {
 
   private constructor() {
     // Initialize viem public client for transaction monitoring
-    const providerUrl = process.env.PROVIDER_URL || "https://rpc.ankr.com/base/b39a19f9ecf66252bf862fe6948021cd1586009ee97874655f46481cfbf3f129";
+    const providerUrl = config.providerUrl;
     
     this.publicClient = createPublicClient({
       chain: base,
@@ -45,7 +41,7 @@ export class SwapService {
         throw new Error("CDP_WALLET_SECRET environment variable is not set");
       }
 
-      console.log("Initializing CDP client...");
+      logger.info('Initializing CDP client');
       
       try {
         this.cdp = new CdpClient({
@@ -53,9 +49,9 @@ export class SwapService {
           apiKeySecret: process.env.CDP_API_KEY_SECRET,
           walletSecret: process.env.CDP_WALLET_SECRET,
         });
-        console.log("CDP client initialized successfully");
+        logger.info('CDP client initialized successfully');
       } catch (error) {
-        console.error("Failed to initialize CDP client:", error);
+        logger.error({ err: error }, 'Failed to initialize CDP client');
         throw new Error(`CDP client initialization failed: ${(error as Error).message}`);
       }
     }
@@ -82,7 +78,7 @@ export class SwapService {
       } else {
         return BigInt(valueString);
       }
-    } catch (error) {
+    } catch (_error) {
       throw new Error(`Invalid amount format: ${valueString}. Amount must be a valid integer string.`);
     }
   }
@@ -161,10 +157,10 @@ export class SwapService {
     try {
       this.initializeCdp();
       
-      console.log(`Starting swap execution for account: ${params.accountName}`);
+      logger.info({ accountName: params.accountName }, 'Starting swap execution');
       
       // Validate prerequisites first
-      console.log(`Validating swap prerequisites...`);
+      logger.info('Validating swap prerequisites');
       const validation = await this.validateSwapPrerequisites(
         params.accountName,
         params.fromToken,
@@ -176,7 +172,7 @@ export class SwapService {
         throw new Error(`Validation failed: ${validation.message}`);
       }
       
-      console.log(`Validation passed:`, validation.data);
+      logger.info({ validation: validation.data }, 'Validation passed');
       
       // Get the account
       const account = await this.cdp!.evm.getAccount({
@@ -187,7 +183,7 @@ export class SwapService {
       let fromAmount: bigint;
       if (validation.data.adjustedAmount) {
         fromAmount = BigInt(validation.data.adjustedAmount);
-        console.log(`Using adjusted amount: ${fromAmount.toString()} (original: ${params.fromAmount})`);
+        logger.info({ adjustedAmount: fromAmount.toString(), original: params.fromAmount }, 'Using adjusted amount');
       } else {
         // Convert amount to BigInt safely
         fromAmount = this.safeBigIntConversion(params.fromAmount);
@@ -196,31 +192,27 @@ export class SwapService {
       // Check if fromToken is native ETH
       const isNativeAsset = params.fromToken.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
-      console.log(
-        `Executing swap: ${fromAmount.toString()} ${params.fromToken} -> ${
-          params.toToken
-        } on network: ${params.network}`
-      );
+      logger.info({ fromAmount: fromAmount.toString(), fromToken: params.fromToken, toToken: params.toToken, network: params.network }, 'Executing swap');
 
       // Handle token allowance check and approval if needed (only for non-native assets)
       if (!isNativeAsset) {
         try {
-          console.log(`Checking token allowance for ${params.fromToken}...`);
+          logger.info({ fromToken: params.fromToken }, 'Checking token allowance');
           await this.handleTokenAllowance(
             account.address as Address,
             params.fromToken as Address,
             fromAmount,
             params.network
           );
-          console.log(`Token allowance check completed successfully`);
+          logger.info('Token allowance check completed successfully');
         } catch (approvalError) {
-          console.error(`Token approval failed:`, approvalError);
+          logger.error({ err: approvalError }, 'Token approval failed');
           throw new Error(`Token approval failed: ${(approvalError as Error).message}. Please ensure the account has sufficient balance and try again.`);
         }
       }
 
       // Execute swap
-      console.log(`Initiating swap transaction...`);
+      logger.info('Initiating swap transaction');
       const swapResult = await account.swap({
         network: params.network,
         fromToken: params.fromToken as `0x${string}`,
@@ -229,10 +221,39 @@ export class SwapService {
         slippageBps: params.slippageBps || 100, // Default 1% slippage tolerance
       });
 
-      console.log(`Swap executed successfully: ${swapResult.transactionHash}`);
+      logger.info({ tx: swapResult.transactionHash }, 'Swap executed successfully');
+
+      // Create trade alert for successful swap
+      try {
+        const { AlertsService } = await import('./alertsService.js');
+        const alertsService = new AlertsService();
+        
+        // Create successful trade alert
+        await alertsService.createTradeAlert(
+          params.accountName,
+          'successful_trade',
+          params.fromToken,
+          fromAmount.toString()
+        );
+        logger.info('Trade alert created for successful swap');
+        
+        // Check if this is a large trade (e.g., > 1 ETH or equivalent)
+        const isLargeTrade = this.isLargeTrade(fromAmount, params.fromToken);
+        if (isLargeTrade) {
+          await alertsService.createTradeAlert(
+            params.accountName,
+            'large_trade',
+            params.fromToken,
+            fromAmount.toString()
+          );
+          logger.info('Large trade alert created for swap');
+        }
+      } catch (alertError) {
+        logger.warn({ err: alertError }, 'Failed to create trade alert');
+      }
 
       // Wait for transaction confirmation
-      console.log(`Waiting for transaction confirmation...`);
+      logger.info('Waiting for transaction confirmation');
       const receipt = await this.publicClient.waitForTransactionReceipt({
         hash: swapResult.transactionHash,
       });
@@ -286,7 +307,22 @@ export class SwapService {
         message: "Swap executed successfully",
       };
     } catch (error) {
-      console.error(`Swap execution failed:`, error);
+      logger.error({ err: error }, 'Swap execution failed');
+      
+      // Create trade alert for failed swap
+      try {
+        const { AlertsService } = await import('./alertsService.js');
+        const alertsService = new AlertsService();
+        await alertsService.createTradeAlert(
+          params.accountName,
+          'failed_transaction',
+          params.fromToken,
+          params.fromAmount
+        );
+        logger.info('Trade alert created for failed swap');
+      } catch (alertError) {
+        logger.warn({ err: alertError }, 'Failed to create trade alert');
+      }
       
       // Provide more specific error messages
       if (error instanceof Error) {
@@ -312,7 +348,7 @@ export class SwapService {
     accountName: string,
     fromToken: string,
     fromAmount: string,
-    network: EvmSwapsNetwork = "base"
+    _network: EvmSwapsNetwork = "base"
   ) {
     try {
       this.initializeCdp();
@@ -327,11 +363,9 @@ export class SwapService {
 
       const isNativeAsset = fromToken.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
-      console.log(`Validating swap prerequisites for account ${accountName}...`);
-      console.log(`Amount: ${fromAmount}, BigInt: ${amountBigInt.toString()}`);
-
-      // Check account exists and is accessible
-      console.log(`Account address: ${account.address}`);
+      logger.info({ accountName }, 'Validating swap prerequisites');
+      logger.debug({ amount: fromAmount, bigInt: amountBigInt.toString() }, 'Parsed amount');
+      logger.debug({ accountAddress: account.address }, 'Account resolved');
 
       if (!isNativeAsset) {
         // Check token balance
@@ -342,7 +376,7 @@ export class SwapService {
           args: [account.address as Address],
         });
 
-        console.log(`Token balance: ${tokenBalance.toString()}, Required: ${amountBigInt.toString()}`);
+        logger.debug({ tokenBalance: tokenBalance.toString(), required: amountBigInt.toString() }, 'Token balance check');
 
         // Add a small tolerance (0.1% or minimum 1 token) to handle precision issues
         const tolerance = amountBigInt > BigInt(1000) ? amountBigInt / BigInt(1000) : BigInt(1);
@@ -351,7 +385,7 @@ export class SwapService {
         if (tokenBalance < requiredWithTolerance) {
           // If the difference is very small, try with the exact balance
           if (tokenBalance >= amountBigInt - tolerance) {
-            console.log(`Small difference detected, using exact balance: ${tokenBalance.toString()}`);
+            logger.info({ tokenBalance: tokenBalance.toString() }, 'Small diff detected, using exact balance');
             amountBigInt = tokenBalance;
           } else {
             throw new Error(`Insufficient token balance. Available: ${tokenBalance.toString()}, Required: ${amountBigInt.toString()}, Tolerance: ${tolerance.toString()}`);
@@ -364,7 +398,7 @@ export class SwapService {
           fromToken as Address
         );
 
-        console.log(`Current allowance: ${currentAllowance.toString()}, Required: ${amountBigInt.toString()}`);
+        logger.debug({ currentAllowance: currentAllowance.toString(), required: amountBigInt.toString() }, 'Allowance check');
 
         return {
           success: true,
@@ -385,7 +419,7 @@ export class SwapService {
           address: account.address as Address,
         });
 
-        console.log(`ETH balance: ${ethBalance.toString()}, Required: ${amountBigInt.toString()}`);
+        logger.debug({ ethBalance: ethBalance.toString(), required: amountBigInt.toString() }, 'ETH balance check');
 
         if (ethBalance < amountBigInt) {
           throw new Error(`Insufficient ETH balance. Available: ${ethBalance.toString()}, Required: ${amountBigInt.toString()}`);
@@ -403,7 +437,7 @@ export class SwapService {
         };
       }
     } catch (error) {
-      console.error(`Validation failed:`, error);
+      logger.error({ err: error }, 'Validation failed');
       throw new Error(`Validation failed: ${(error as Error).message}`);
     }
   }
@@ -424,19 +458,17 @@ export class SwapService {
   ): Promise<void> {
     try {
       // Check allowance before attempting the swap
-      console.log(`Checking current allowance for token ${tokenAddress}...`);
+      logger.info({ tokenAddress }, 'Checking current allowance');
       const currentAllowance = await this.getAllowance(
         ownerAddress,
         tokenAddress
       );
 
-      console.log(`Current allowance: ${currentAllowance.toString()}, Required: ${fromAmount.toString()}`);
+      logger.debug({ currentAllowance: currentAllowance.toString(), required: fromAmount.toString() }, 'Current allowance');
 
       // If allowance is insufficient, approve tokens
       if (currentAllowance < fromAmount) {
-        console.log(
-          `Allowance insufficient. Current: ${currentAllowance.toString()}, Required: ${fromAmount.toString()}. Approving tokens...`
-        );
+        logger.info({ currentAllowance: currentAllowance.toString(), required: fromAmount.toString() }, 'Allowance insufficient, approving tokens');
 
         // Check account balance first
         await this.checkAccountBalance(ownerAddress, tokenAddress, fromAmount);
@@ -448,33 +480,31 @@ export class SwapService {
           fromAmount,
           network
         );
-        console.log(`Successfully set allowance to ${fromAmount.toString()}`);
+        logger.info({ allowance: fromAmount.toString() }, 'Allowance set');
         
         // Verify the allowance was set correctly
         const newAllowance = await this.getAllowance(ownerAddress, tokenAddress);
-        console.log(`Verified new allowance: ${newAllowance.toString()}`);
+        logger.debug({ newAllowance: newAllowance.toString() }, 'Verified new allowance');
         
         // Add a small delay to ensure the blockchain state is updated
         if (newAllowance < fromAmount) {
-          console.log(`Allowance still insufficient, waiting 5 seconds and checking again...`);
+          logger.info('Allowance still insufficient, retrying after delay');
           await new Promise(resolve => setTimeout(resolve, 5000));
           
           const retryAllowance = await this.getAllowance(ownerAddress, tokenAddress);
-          console.log(`Retry allowance check: ${retryAllowance.toString()}`);
+          logger.debug({ retryAllowance: retryAllowance.toString() }, 'Retry allowance check');
           
           if (retryAllowance < fromAmount) {
             throw new Error(`Failed to set sufficient allowance. Current: ${retryAllowance.toString()}, Required: ${fromAmount.toString()}. The token might have a non-standard approval mechanism.`);
           } else {
-            console.log(`Allowance verified after retry: ${retryAllowance.toString()}`);
+            logger.info({ retryAllowance: retryAllowance.toString() }, 'Allowance verified after retry');
           }
         }
       } else {
-        console.log(
-          `Token allowance sufficient. Current: ${currentAllowance.toString()}, Required: ${fromAmount.toString()}`
-        );
+        logger.info({ currentAllowance: currentAllowance.toString(), required: fromAmount.toString() }, 'Token allowance sufficient');
       }
     } catch (error) {
-      console.error(`Error in handleTokenAllowance:`, error);
+      logger.error({ err: error }, 'Error in handleTokenAllowance');
       throw new Error(`Token allowance check failed: ${(error as Error).message}`);
     }
   }
@@ -488,7 +518,7 @@ export class SwapService {
     requiredAmount: bigint
   ): Promise<void> {
     try {
-      console.log(`Checking account balance for token ${tokenAddress}...`);
+      logger.info({ tokenAddress }, 'Checking account balance');
       
       const balance = await this.publicClient.readContract({
         address: tokenAddress,
@@ -497,7 +527,7 @@ export class SwapService {
         args: [ownerAddress],
       });
 
-      console.log(`Account balance: ${balance.toString()}, Required: ${requiredAmount.toString()}`);
+      logger.debug({ balance: balance.toString(), required: requiredAmount.toString() }, 'Account token balance');
 
       if (balance < requiredAmount) {
         throw new Error(`Insufficient token balance. Available: ${balance.toString()}, Required: ${requiredAmount.toString()}`);
@@ -508,7 +538,7 @@ export class SwapService {
         address: ownerAddress,
       });
 
-      console.log(`ETH balance for gas: ${ethBalance.toString()}`);
+      logger.debug({ ethBalance: ethBalance.toString() }, 'ETH balance for gas');
 
       // Reduce minimum ETH requirement to 0.0001 ETH (100000000000000 wei)
       const minEthRequired = BigInt(100000000000000); // 0.0001 ETH
@@ -517,7 +547,7 @@ export class SwapService {
       }
 
     } catch (error) {
-      console.error(`Balance check failed:`, error);
+      logger.error({ err: error }, 'Balance check failed');
       throw new Error(`Balance check failed: ${(error as Error).message}`);
     }
   }
@@ -536,9 +566,7 @@ export class SwapService {
     network: EvmSwapsNetwork
   ) {
     try {
-      console.log(
-        `Approving token allowance for ${tokenAddress} to spender ${PERMIT2_ADDRESS}`
-      );
+      logger.info({ tokenAddress, spender: PERMIT2_ADDRESS, amount: amount.toString() }, 'Approving token allowance');
 
       // Ensure CDP client is initialized
       this.initializeCdp();
@@ -553,14 +581,14 @@ export class SwapService {
         args: [PERMIT2_ADDRESS, amount],
       });
 
-      console.log(`Sending approval transaction...`);
-      console.log(`Transaction details:`, {
+      logger.info('Sending approval transaction');
+      logger.debug({
         address: ownerAddress,
         to: tokenAddress,
         data: data,
         value: "0",
         network: network
-      });
+      }, 'Approval transaction details');
       
       // Send the approve transaction
       const txResult = await this.cdp.evm.sendTransaction({
@@ -573,22 +601,22 @@ export class SwapService {
         },
       });
 
-      console.log(`Approval transaction hash: ${txResult.transactionHash}`);
+      logger.info({ tx: txResult.transactionHash }, 'Approval transaction sent');
 
       // Wait for approval transaction to be confirmed
-      console.log(`Waiting for approval transaction confirmation...`);
+      logger.info('Waiting for approval transaction confirmation');
       const receipt = await this.publicClient.waitForTransactionReceipt({
         hash: txResult.transactionHash,
       });
 
       if (receipt.status === "success") {
-        console.log(`Approval confirmed in block ${receipt.blockNumber} ✅`);
+        logger.info({ blockNumber: receipt.blockNumber }, 'Approval confirmed');
         return receipt;
       } else {
         throw new Error(`Approval transaction failed with status: ${receipt.status}`);
       }
     } catch (error) {
-      console.error(`Approval transaction failed:`, error);
+      logger.error({ err: error }, 'Approval transaction failed');
       
       // Provide more specific error messages
       if (error instanceof Error) {
@@ -617,9 +645,7 @@ export class SwapService {
     owner: Address,
     token: Address
   ): Promise<bigint> {
-    console.log(
-      `\nChecking allowance for token (${token}) to Permit2 contract...`
-    );
+    logger.info({ token }, 'Checking allowance to Permit2');
 
     try {
       const allowance = await this.publicClient.readContract({
@@ -629,10 +655,10 @@ export class SwapService {
         args: [owner, PERMIT2_ADDRESS],
       });
 
-      console.log(`Current allowance: ${allowance.toString()}`);
+      logger.debug({ allowance: allowance.toString() }, 'Current allowance');
       return allowance;
     } catch (error) {
-      console.error("Error checking allowance:", error);
+      logger.error({ err: error }, 'Error checking allowance');
       return BigInt(0);
     }
   }
@@ -658,7 +684,7 @@ export class SwapService {
       // Convert amount to BigInt safely
       const amountBigInt = this.safeBigIntConversion(amount);
       
-      console.log(`Manually approving ${amountBigInt.toString()} tokens for account ${accountName}...`);
+      logger.info({ amount: amountBigInt.toString(), accountName }, 'Manual token approval');
       
       const receipt = await this.approveTokenAllowance(
         account.address as Address,
@@ -678,7 +704,7 @@ export class SwapService {
         message: "Token approval completed successfully"
       };
     } catch (error) {
-      console.error(`Manual token approval failed:`, error);
+      logger.error({ err: error }, 'Manual token approval failed');
       throw new Error(`Failed to approve tokens: ${(error as Error).message}`);
     }
   }
@@ -716,7 +742,7 @@ export class SwapService {
         message: "Token allowance retrieved successfully"
       };
     } catch (error) {
-      console.error(`Token allowance check failed:`, error);
+      logger.error({ err: error }, 'Token allowance check failed');
       throw new Error(`Failed to check token allowance: ${(error as Error).message}`);
     }
   }
@@ -726,22 +752,22 @@ export class SwapService {
    */
   async checkTokenApprovalSupport(
     tokenAddress: string,
-    network: EvmSwapsNetwork = "base"
+    _network: EvmSwapsNetwork = "base"
   ) {
     try {
-      console.log(`Checking approval support for token: ${tokenAddress}`);
+      logger.info({ tokenAddress }, 'Checking approval support for token');
       
       // Try to read the allowance function
       try {
-        const allowance = await this.publicClient.readContract({
+        await this.publicClient.readContract({
           address: tokenAddress as Address,
           abi: erc20Abi,
           functionName: "allowance",
           args: ["0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000"],
         });
-        console.log(`Token supports allowance function`);
+        logger.info('Token supports allowance function');
       } catch (error) {
-        console.error(`Token does not support standard allowance function:`, (error as Error).message);
+        logger.warn({ err: error }, 'Token does not support standard allowance function');
         return {
           success: false,
           error: "Token does not support standard ERC20 allowance function",
@@ -755,14 +781,14 @@ export class SwapService {
 
       // Try to read the approve function signature
       try {
-        const approveData = encodeFunctionData({
+        encodeFunctionData({
           abi: erc20Abi,
           functionName: "approve",
           args: ["0x0000000000000000000000000000000000000000", BigInt(0)],
         });
-        console.log(`Token supports approve function`);
+        logger.info('Token supports approve function');
       } catch (error) {
-        console.error(`Token does not support standard approve function:`, (error as Error).message);
+        logger.warn({ err: error }, 'Token does not support standard approve function');
         return {
           success: false,
           error: "Token does not support standard ERC20 approve function",
@@ -785,7 +811,7 @@ export class SwapService {
         message: "Token approval support verified"
       };
     } catch (error) {
-      console.error(`Token approval support check failed:`, error);
+      logger.error({ err: error }, 'Token approval support check failed');
       return {
         success: false,
         error: `Failed to check token approval support: ${(error as Error).message}`,
@@ -860,9 +886,7 @@ export class SwapService {
 
       return `${wholePart.toString()}.${trimmedFractional}`;
     } catch (error) {
-      console.warn(
-        `Failed to format amount ${amount}: ${(error as Error).message}`
-      );
+      logger.warn({ err: error, amount }, 'Failed to format amount');
       return "0.0";
     }
   }
@@ -951,7 +975,7 @@ export class SwapService {
         };
       }
     } catch (error) {
-      console.error(`Max amount calculation failed:`, error);
+      logger.error({ err: error }, 'Max amount calculation failed');
       throw new Error(`Failed to calculate max amount: ${(error as Error).message}`);
     }
   }
@@ -974,7 +998,7 @@ export class SwapService {
 
       const amountBigInt = this.safeBigIntConversion(amount);
       
-      console.log(`Funding account ${accountName} with ${amountBigInt.toString()} wei (${this.formatAmount(amountBigInt.toString(), 18)} ETH)...`);
+      logger.info({ accountName, wei: amountBigInt.toString(), eth: this.formatAmount(amountBigInt.toString(), 18) }, 'Funding account');
       
       // Send ETH to the account
       const txResult = await this.cdp!.evm.sendTransaction({
@@ -986,16 +1010,16 @@ export class SwapService {
         },
       });
 
-      console.log(`Funding transaction hash: ${txResult.transactionHash}`);
+      logger.info({ tx: txResult.transactionHash }, 'Funding transaction sent');
 
       // Wait for transaction confirmation
-      console.log(`Waiting for funding transaction confirmation...`);
+      logger.info('Waiting for funding transaction confirmation');
       const receipt = await this.publicClient.waitForTransactionReceipt({
         hash: txResult.transactionHash,
       });
 
       if (receipt.status === "success") {
-        console.log(`Funding confirmed in block ${receipt.blockNumber} ✅`);
+        logger.info({ blockNumber: receipt.blockNumber }, 'Funding confirmed');
         
         // Check new balance
         const newBalance = await this.publicClient.getBalance({
@@ -1018,7 +1042,7 @@ export class SwapService {
         throw new Error(`Funding transaction failed with status: ${receipt.status}`);
       }
     } catch (error) {
-      console.error(`Account funding failed:`, error);
+      logger.error({ err: error }, 'Account funding failed');
       throw new Error(`Failed to fund account: ${(error as Error).message}`);
     }
   }
@@ -1054,8 +1078,26 @@ export class SwapService {
         message: "Account ETH balance retrieved successfully"
       };
     } catch (error) {
-      console.error(`ETH balance check failed:`, error);
+      logger.error({ err: error }, 'ETH balance check failed');
       throw new Error(`Failed to check ETH balance: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Helper to determine if a trade is considered "large"
+   * This is a placeholder and can be refined based on specific criteria
+   * For example, a large trade might be defined as > 1 ETH or > 1000 USDC/USDT
+   */
+  private isLargeTrade(fromAmount: bigint, fromToken: string): boolean {
+    const fromTokenLower = fromToken.toLowerCase();
+    const isNativeAsset = fromTokenLower === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+    if (isNativeAsset) {
+      // For ETH, a large trade is typically > 1 ETH
+      return fromAmount > BigInt(1000000000000000000); // 1 ETH in wei
+    } else {
+      // For tokens, a large trade is typically > 1000 USDC/USDT
+      return fromAmount > BigInt(1000000000000000000); // 1 ETH in wei
     }
   }
 }

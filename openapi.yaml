@@ -1,13 +1,63 @@
 openapi: 3.0.3
 info:
   title: UseZoracle Telegram Bot API
-  description: API for managing cryptocurrency accounts, checking balances, and performing transactions using the Coinbase CDP SDK
+  description: |
+    API for managing cryptocurrency accounts, checking balances, and performing transactions using the Coinbase CDP SDK.
+    
+    ## Webhook Integration
+    
+    This API includes comprehensive webhook integration for real-time copy trading:
+    
+    ### CDP Webhook System
+    - **Automatic Webhook Management**: Copy-trade configurations automatically update CDP webhooks
+    - **Real-time Monitoring**: Webhooks monitor target wallet addresses for trading activities
+    - **Address Synchronization**: Webhook addresses are automatically synchronized with copy-trade configs
+    
+    ### Key Webhook Endpoints
+    - `POST /api/monitoring/copy-trading` - Create copy-trade config (auto-updates webhook)
+    - `POST /api/monitoring/webhook/update-addresses` - Manually sync webhook addresses
+    - `GET /api/cdp/webhooks/{id}` - Get webhook details and monitored addresses
+    - `PUT /api/cdp/webhooks/{id}/addresses` - Update webhook address list
+    
+    ### Integration Flow
+    1. Create copy-trade configuration → Webhook automatically updated
+    2. CDP webhook monitors target addresses → Real-time notifications
+    3. System executes copy trades → Based on webhook events
+    4. Manual sync available → For troubleshooting and maintenance
+    
+    For detailed webhook integration documentation, see the individual endpoint descriptions.
   version: 1.0.0
 servers:
   - url: http://localhost:3000
     description: Local development server
   - url: https://usezoracle-telegrambot.up.railway.app
     description: Production server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Accounts
+    description: Account management operations
+  - name: Balances
+    description: Balance checking operations
+  - name: Transactions
+    description: Transaction management
+  - name: Swaps
+    description: Token swap operations
+  - name: Tokens
+    description: Token information and metadata
+  - name: Token Details
+    description: Detailed token information using GeckoTerminal API
+  - name: Monitoring
+    description: Portfolio monitoring operations
+  - name: Snipe
+    description: Token snipe operations
+  - name: Positions
+    description: Position management
+  - name: Alerts
+    description: Alert management and monitoring
+  - name: Webhooks
+    description: CDP webhook management, monitoring, and integration for copy trading
 
 paths:
   /health:
@@ -343,6 +393,7 @@ paths:
 
   /api/swaps/price:
     get:
+      operationId: getSwapPriceEstimate
       summary: Get swap price estimate
       description: Returns price estimate for swapping tokens. This is for display purposes only and doesn't reserve funds.
       tags:
@@ -402,6 +453,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests (rate limited)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
@@ -411,6 +468,7 @@ paths:
 
   /api/swaps/execute:
     post:
+      operationId: executeSwap
       summary: Execute token swap
       description: |
         Executes a swap between tokens with automatic token allowance management.
@@ -498,6 +556,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests (rate limited)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
@@ -505,18 +569,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/monitoring/deposits:
+  # Legacy deposit monitoring removed (CDP webhooks are used for detection)
+
+  /api/monitoring/copy-trading:
     post:
-      summary: Monitor wallet for incoming deposits
-      description: Monitors a wallet address for incoming ETH and ERC-20 token deposit transactions on Base network. Detects both direct ETH transfers and ERC-20 token transfers (Transfer events) in the last 1000 blocks (~2-3 hours).
+      summary: Create a copy-trading configuration and automatically update CDP webhook
+      description: |
+        Creates a copy-trade configuration and automatically updates the CDP webhook to monitor the target wallet.
+        This endpoint handles the complete setup process for copy trading, including webhook integration.
+        
+        ## Webhook Integration
+        
+        ### Automatic Webhook Updates
+        When you create a copy-trade configuration, the system automatically:
+        1. **Adds the target wallet** to the CDP webhook monitoring list
+        2. **Updates webhook addresses** with all active copy-trade target wallets
+        3. **Ensures real-time monitoring** of the new wallet address
+        
+        ### CDP Webhook Configuration
+        - **Event Type**: `wallet_activity` - Monitors all trading activities
+        - **Network**: `base-mainnet` - Base network transactions
+        - **Addresses**: Automatically managed list of all target wallet addresses
+        - **Auto-Sync**: Webhook addresses are updated whenever copy-trade configs change
+        
+        ### Integration Process
+        1. **Create Copy-Trade Config**: This endpoint creates the configuration
+        2. **Webhook Update**: Automatically updates CDP webhook with new address
+        3. **Monitor Activities**: CDP webhook sends real-time notifications
+        4. **Execute Copy Trades**: System executes trades based on webhook events
+        
+        ### Manual Webhook Management
+        If webhook addresses need manual synchronization:
+        - Use `/api/monitoring/webhook/update-addresses` to force sync
+        - Check webhook status via `/api/cdp/webhooks/{webhookId}`
+        - List all webhooks via `/api/cdp/webhooks`
+        
+        ### Troubleshooting
+        - **Missing Addresses**: Call webhook update endpoint to sync
+        - **Webhook Not Working**: Verify CDP_WEBHOOK_ID environment variable
+        - **No Notifications**: Check webhook status and addresses
+        
+        ### Usage Tips
+        - Set `QUICKNODE_URL` (HTTPS) and `QUICKNODE_WSS` (WSS) in your environment for low-latency detection.
+        - `delegationAmount` caps the total ETH the system will spend across mirrored trades for this config.
+        - `maxSlippage` controls execution tolerance (expressed as percentage; e.g., 0.01 = 1%).
+        - Router allowlist and buy-only behavior are controlled by environment (see COPY_TRADING_ROUTERS, COPY_TRADING_BUY_ONLY).
+        - Duplicate prevention: one config per (accountName, targetWalletAddress) combination. Returns 409 if this account already has a config for this wallet address.
       tags:
         - Monitoring
       x-code-samples:
         - lang: curl
           source: |
-            curl -X POST "http://localhost:3000/api/monitoring/deposits" \
+            curl -X POST "http://localhost:3000/api/monitoring/copy-trading" \
               -H "Content-Type: application/json" \
-              -d '{"walletAddress":"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"}'
+              -d '{
+                "walletAddress":"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+                "accountName":"my-cdp-account",
+                "delegationAmount":"0.05",
+                "maxSlippage":0.01
+              }'
       requestBody:
         required: true
         content:
@@ -525,25 +636,59 @@ paths:
               type: object
               required:
                 - walletAddress
+                - accountName
+                - delegationAmount
               properties:
                 walletAddress:
                   type: string
-                  description: The wallet address to monitor for deposits
+                  description: The target wallet address to mirror buys from
                   pattern: "^0x[a-fA-F0-9]{40}$"
                   example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
-                fromBlock:
+                accountName:
+                  type: string
+                  description: CDP account name to execute mirrored swaps
+                  example: "my-cdp-account"
+                delegationAmount:
+                  type: string
+                  description: Maximum ETH (as a string) to allocate for copy trading
+                  example: "0.05"
+                maxSlippage:
                   type: number
-                  description: Starting block number (optional, defaults to last 1000 blocks)
-                  example: 33800000
+                  description: Maximum slippage percentage (e.g., 0.05 = 5%). Defaults to 0.05
+                  example: 0.01
       responses:
         "200":
-          description: Deposit events found
+          description: Copy trading configuration created and webhook updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DepositMonitoringResponse"
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      config:
+                        $ref: "#/components/schemas/CopyTradeConfig"
+                        description: The created copy-trade configuration
+                      events:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/CopyTradeEvent"
+                        description: Copy-trade events found and executed
+                  message:
+                    type: string
+                    description: Success message including webhook update confirmation
+                    example: "Copy trading setup complete. Found 0 buy transactions to copy."
         "400":
           description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Conflict - this account already has a copy-trade config for this wallet address
           content:
             application/json:
               schema:
@@ -555,41 +700,242 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/monitoring/copy-trading:
+  /api/monitoring/copy-trading/cleanup:
     post:
-      summary: Monitor a wallet for copy trading opportunities
-      description: Monitors a wallet address for trading activities that can be copied
+      summary: Clean up duplicate copy trading configurations
+      description: |
+        Remove duplicate copy trading configurations, keeping only the most recent one for each (accountName, targetWalletAddress) combination. 
+        This helps maintain data integrity and prevents confusion from multiple configs for the same wallet by the same account.
+        
+        The cleanup process:
+        - Groups configurations by (accountName, targetWalletAddress) combination
+        - For each combination with multiple configs, keeps only the most recent one
+        - Deletes all older duplicate configurations
+        - Returns counts of removed and kept configurations
       tags:
         - Monitoring
       x-code-samples:
         - lang: curl
           source: |
-            curl -X POST "http://localhost:3000/api/monitoring/copy-trading" \
-              -H "Content-Type: application/json" \
-              -d '{"walletAddress":"0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"}'
+            curl -X POST "http://localhost:3000/api/monitoring/copy-trading/cleanup"
+      responses:
+        "200":
+          description: Duplicate configurations cleaned up successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      removed:
+                        type: number
+                        description: Number of duplicate configurations removed
+                        example: 8
+                      kept:
+                        type: number
+                        description: Number of configurations kept (one per unique account-wallet combination)
+                        example: 3
+                  message:
+                    type: string
+                    example: "Cleanup completed: 8 duplicate configs removed, 3 configs kept"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /webhooks/cdp:
+    post:
+      summary: CDP webhook callback (wallet_activity)
+      description: |
+        Callback endpoint to receive Coinbase CDP wallet_activity webhooks. The server verifies the signature header and logs the full payload, then triggers copy-trade execution if rules match (e.g., incoming ERC-20 transfer to a monitored address).
+
+        Security and verification:
+        - Header `x-coinbase-signature` is required. The server computes HMAC-SHA256 over the raw body using the `webhookId` as the key and compares to this signature.
+        - Responds 200 quickly; processing occurs asynchronously.
+
+        Note: This is intended for CDP to call. Clients do not call this endpoint.
+      tags:
+        - Webhooks
+      parameters:
+        - in: header
+          name: x-coinbase-signature
+          schema:
+            type: string
+          required: true
+          description: HMAC-SHA256 signature over raw body using webhookId as key
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - walletAddress
-              properties:
-                walletAddress:
-                  type: string
-                  description: The wallet address to monitor for trading activities
-                  pattern: "^0x[a-fA-F0-9]{40}$"
-                  example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+              additionalProperties: true
+            examples:
+              erc20_transfer:
+                value:
+                  webhookId: "66b2ac80e8abf9381a162137"
+                  eventType: "erc20_transfer"
+                  network: "base-mainnet"
+                  blockHash: "0x..."
+                  blockNumber: "18452087"
+                  blockTime: "2024-08-15T03:45:21.000Z"
+                  transactionHash: "0x..."
+                  transactionIndex: "16"
+                  logIndex: "46"
+                  contractAddress: "0x..."
+                  from: "0x..."
+                  to: "0x..."
+                  value: "123456"
       responses:
         "200":
-          description: Copy trading events found
+          description: Acknowledged
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CopyTradingResponse"
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  receivedAt:
+                    type: string
+                    format: date-time
+
+  /api/cdp/webhooks:
+    get:
+      summary: List CDP webhooks
+      description: Returns the list of CDP webhooks configured for the organization via the SDK.
+      tags:
+        - Webhooks
+      responses:
+        "200":
+          description: List of webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "500":
+          description: Failed to list webhooks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cdp/webhooks/{id}/addresses:
+    put:
+      summary: Update wallet_activity webhook addresses
+      description: |
+        Replace the complete list of addresses a CDP wallet_activity webhook tracks. This uses PUT semantics (full replacement): you must send the entire list of addresses to monitor on every update.
+
+        Update rules (from CDP Webhooks):
+        - Use PUT (not PATCH). Always provide the full list of addresses.
+        - `walletId` cannot be changed for a wallet activity webhook, but it is required in the eventTypeFilter when updating. For external addresses, you may set it to an empty string ("").
+        - Address updates are supported in the Node and Python SDKs.
+
+        Example (Node SDK) to append a new address using the SDK directly:
+        - Fetch the webhook, read its eventTypeFilter, clone the existing addresses, push the new address, then call `update` with the full list and the walletId:
+        
+        Typescript
+        
+        const eventTypeFilter = walletWebhook.getEventTypeFilter();
+        const addresses: string[] = [...(eventTypeFilter?.addresses || [])];
+        addresses.push('0xNewAddress...');
+        await webhook.update({
+          eventTypeFilter: { addresses, walletId: eventTypeFilter.walletId }
+        });
+      tags:
+        - Webhooks
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The CDP webhookId to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWebhookAddressesRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
         "400":
           description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to update webhook
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cdp/webhooks/{id}:
+    get:
+      summary: Get CDP webhook details by ID
+      description: |
+        Retrieve detailed information about a specific CDP webhook, including its current configuration,
+        monitored addresses, and status. This endpoint is useful for verifying webhook setup and
+        troubleshooting integration issues.
+      tags:
+        - Webhooks
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The CDP webhook ID to retrieve
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/cdp/webhooks/689980a3f3e21b15f0b52893"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/cdp/webhooks/689980a3f3e21b15f0b52893')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Webhook details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/WebhookDetails"
+        "404":
+          description: Webhook not found
           content:
             application/json:
               schema:
@@ -600,6 +946,228 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/webhook/update-addresses:
+    post:
+      summary: Update CDP webhook addresses with all active copy-trade target wallets
+      description: |
+        Manually updates the CDP webhook with all target wallet addresses from active copy-trade configurations.
+        This endpoint ensures the webhook is monitoring all wallets that should be copy-traded.
+        
+        ## Integration Guide
+        
+        ### When to Use This Endpoint
+        - After adding new copy-trade configurations
+        - When webhook addresses are out of sync
+        - During system maintenance or recovery
+        
+        ### Webhook Integration Process
+        1. **Create Copy-Trade Config**: Use `/api/monitoring/copy-trading` to add new target wallets
+        2. **Verify Webhook Update**: This endpoint automatically updates webhook addresses
+        3. **Manual Sync**: If needed, call this endpoint to force webhook address synchronization
+        4. **Monitor Webhook**: Check webhook status via `/api/cdp/webhooks/{webhookId}`
+        
+        ### CDP Webhook Configuration
+        - **Event Type**: `wallet_activity`
+        - **Network**: `base-mainnet`
+        - **Addresses**: All target wallet addresses from active copy-trade configs
+        - **Auto-Update**: Webhook addresses are automatically updated when copy-trade configs change
+        
+        ### Troubleshooting
+        - If webhook addresses are missing, call this endpoint to sync
+        - Check webhook status and addresses via CDP webhook endpoints
+        - Verify copy-trade configs are active before updating webhook
+      tags:
+        - Monitoring
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X POST "http://localhost:3000/api/monitoring/webhook/update-addresses"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/monitoring/webhook/update-addresses', {
+              method: 'POST'
+            })
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Webhook addresses updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/WebhookUpdateResponse"
+                  message:
+                    type: string
+                    description: Success message
+                    example: "Webhook addresses updated successfully. Now monitoring 4 target wallets."
+        "400":
+          description: Bad request or webhook not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/copy-trading/configs:
+    get:
+      summary: List copy-trading configurations for an account
+      description: |
+        Returns all copy-trading configurations that belong to the provided CDP account name. Use this to display current settings, check remaining delegation, and fetch configuration IDs for updates or deletion.
+      tags:
+        - Monitoring
+      parameters:
+        - in: query
+          name: accountName
+          required: true
+          schema:
+            type: string
+          description: The CDP account name to fetch configs for
+      responses:
+        "200":
+          description: List of copy trading configurations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CopyTradeConfig"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/copy-trading/events:
+    get:
+      summary: Retrieve copy-trading execution events for an account
+      description: |
+        Returns a list of copy-trading events (success or failure) for the given CDP account. Your Telegram bot can poll this endpoint periodically to notify users about mirrored trades. Each event includes the token purchased, copied amount, transaction hash, and timestamp.
+      tags:
+        - Monitoring
+      parameters:
+        - in: query
+          name: accountName
+          required: true
+          schema:
+            type: string
+          description: The CDP account name to fetch events for
+      responses:
+        "200":
+          description: List of copy trading events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CopyTradeEvent"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/monitoring/copy-trading/configs/{configId}:
+    put:
+      summary: Update a copy-trading configuration
+      description: |
+        Update the delegation amount, max slippage, or active status of an existing copy-trading configuration. Set `isActive` to false to pause mirroring without deleting the config.
+      tags:
+        - Monitoring
+      parameters:
+        - in: path
+          name: configId
+          required: true
+          schema:
+            type: string
+          description: ID of the configuration to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delegationAmount:
+                  type: string
+                  description: New delegation amount (ETH string)
+                maxSlippage:
+                  type: number
+                  description: New max slippage percentage (e.g., 0.05 = 5%)
+                isActive:
+                  type: boolean
+                  description: Pause/resume copy trading for this config
+                beneficiaryAddresses:
+                  type: array
+                  items:
+                    type: string
+                    pattern: "^0x[a-fA-F0-9]{40}$"
+                  description: Additional addresses to treat as the target's beneficiaries (e.g., AA smart wallet outputs)
+      responses:
+        "200":
+          description: Updated configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/CopyTradeConfig"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      summary: Delete a copy-trading configuration
+      description: |
+        Permanently removes the configuration. This stops mirroring for the target wallet and deletes local state for that config. Already executed events remain in the events collection and can still be queried by account name.
+      tags:
+        - Monitoring
+      parameters:
+        - in: path
+          name: configId
+          required: true
+          schema:
+            type: string
+          description: ID of the configuration to delete
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
 
   /api/monitoring/balance/{address}:
     get:
@@ -640,151 +1208,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/monitoring/token-balance:
-    post:
-      summary: Get token balance for a wallet
-      description: Retrieves the balance of a specific token for a wallet address
-      tags:
-        - Monitoring
-      x-code-samples:
-        - lang: curl
-          source: |
-            curl -X POST "http://localhost:3000/api/monitoring/token-balance" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "tokenAddress": "0x4200000000000000000000000000000000000006",
-                "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
-              }'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - tokenAddress
-                - walletAddress
-              properties:
-                tokenAddress:
-                  type: string
-                  description: The token contract address
-                  pattern: "^0x[a-fA-F0-9]{40}$"
-                  example: "0x4200000000000000000000000000000000000006"
-                walletAddress:
-                  type: string
-                  description: The wallet address to check balance for
-                  pattern: "^0x[a-fA-F0-9]{40}$"
-                  example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
-      responses:
-        "200":
-          description: Token balance retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TokenBalanceResponse"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+  # Token balance endpoint removed (not required for webhook-driven copy-trading)
 
-  /api/monitoring/recent-transactions/{address}:
-    get:
-      summary: Get recent transactions for a wallet
-      description: Retrieves recent transactions for a wallet address
-      tags:
-        - Monitoring
-      parameters:
-        - in: path
-          name: address
-          required: true
-          schema:
-            type: string
-            pattern: "^0x[a-fA-F0-9]{40}$"
-          description: The wallet address to get transactions for
-          example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
-        - in: query
-          name: limit
-          schema:
-            type: number
-            default: 10
-            minimum: 1
-            maximum: 100
-          description: Number of recent transactions to retrieve
-          example: 10
-      x-code-samples:
-        - lang: curl
-          source: |
-            curl -X GET "http://localhost:3000/api/monitoring/recent-transactions/0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6?limit=10"
-      responses:
-        "200":
-          description: Recent transactions retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecentTransactionsResponse"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+  # Recent transactions endpoint removed (legacy)
 
-  /api/monitoring/check-limit-orders:
-    post:
-      summary: Check and trigger pending limit orders
-      description: Check all pending limit orders and trigger them if price conditions are met. This should be called periodically to monitor limit orders.
-      tags:
-        - Monitoring
-      x-code-samples:
-        - lang: curl
-          source: |
-            curl -X POST "http://localhost:3000/api/monitoring/check-limit-orders"
-        - lang: javascript
-          source: |
-            fetch('http://localhost:3000/api/monitoring/check-limit-orders', {
-              method: 'POST'
-            })
-              .then(response => response.json())
-              .then(data => console.log(data));
-      responses:
-        "200":
-          description: Limit orders checked successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Position"
-                    description: Array of triggered positions
-                  message:
-                    type: string
-                    example: "Checked limit orders: 2 orders triggered"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+  # Limit orders endpoint removed (not core to current flow)
 
   /api/snipe:
     post:
@@ -857,7 +1285,15 @@ paths:
   /api/positions:
     get:
       summary: Get all positions with filtering options
-      description: Retrieve all positions (open, closed, pending) with optional filtering by account name and status
+      description: |
+        Retrieve all positions (open, closed, pending) with optional filtering by account name and status.
+
+        Data source and calculation:
+        - Positions are derived directly from Coinbase CDP token balances for each account (no on-chain block scanning).
+        - Current prices are fetched via GeckoTerminal (`/networks/base/tokens/{address}`) and cached briefly.
+        - PnL (long) = (Sell Price − Buy Price) × Quantity. Percentage = ((Sell − Buy) / Buy) × 100.
+        - Entry price is preserved per account/token if previously seen; otherwise initialized to current price on first discovery.
+        - One canonical position per token per account, with id format: `accountName-tokenAddress`.
       tags:
         - Positions
       parameters:
@@ -940,7 +1376,13 @@ paths:
   /api/positions/account/{accountName}:
     get:
       summary: Get positions by account name
-      description: Retrieve all positions for a specific account
+      description: |
+        Retrieve all positions for a specific account.
+
+        Data source and calculation:
+        - Positions are built from CDP balances (Base mainnet) and priced via GeckoTerminal.
+        - PnL (long) = (Sell − Buy) × Quantity. Percentage = ((Sell − Buy) / Buy) × 100.
+        - Canonical one-per-token positions; no synthetic historical rows.
       tags:
         - Positions
       parameters:
@@ -1218,6 +1660,12 @@ paths:
                 $ref: "#/components/schemas/Position"
         "400":
           description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests (rate limited)
           content:
             application/json:
               schema:
@@ -1558,7 +2006,7 @@ paths:
                   example: "price_spike"
                 threshold:
                   type: string
-                  description: The threshold value to trigger the alert
+                  description: The threshold value to trigger the alert. For price_spike alerts, use USD value (e.g., "2500.00" for $2,500). For volume_surge alerts, use token units (e.g., "1000000" for 1M tokens).
                   example: "100.00"
                 condition:
                   type: string
@@ -1749,8 +2197,226 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # Removed basic Tokens endpoints; use Token Details endpoints instead
+
+  /api/token-details/tokens/{address}:
+    get:
+      operationId: getTokenDetailsBase
+      summary: Get specific token on Base network
+      description: |
+        Retrieve detailed token market information on Base network using the GeckoTerminal API (price, supply, pools).
+
+        For basic on-chain metadata (name, symbol, decimals), use the Tokens endpoint:
+        - `GET /api/tokens/{contractAddress}`
+      tags:
+        - Token Details
+      parameters:
+        - in: path
+          name: address
+          required: true
+          schema:
+            type: string
+          description: Token contract address
+          example: "0x907bdae00e91544a270694714832410ad8418888"
+        - in: query
+          name: include
+          schema:
+            type: string
+            enum: [top_pools]
+          description: Attributes for related resources to include, which will be returned under the top-level "included" key
+          example: "top_pools"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Get specific token on a network
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeckoTokenDetailsResponse"
+        "400":
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/token-details/tokens/{address}/with-pools:
+    get:
+      operationId: getTokenDetailsWithPoolsBase
+      summary: Get token details with top pools on Base network
+      description: |
+        Retrieve token details including top pools information on Base network.
+
+        For basic on-chain metadata (name, symbol, decimals), use the Tokens endpoint:
+        - `GET /api/tokens/{contractAddress}`
+      tags:
+        - Token Details
+      parameters:
+        - in: path
+          name: address
+          required: true
+          schema:
+            type: string
+          description: Token contract address
+          example: "0x907bdae00e91544a270694714832410ad8418888"
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888/with-pools"
+        - lang: javascript
+          source: |
+            fetch('http://localhost:3000/api/token-details/tokens/0x907bdae00e91544a270694714832410ad8418888/with-pools')
+              .then(response => response.json())
+              .then(data => console.log(data));
+      responses:
+        "200":
+          description: Token details with pools retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeckoTokenDetailsResponse"
+        "429":
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
+    GeckoTokenAttributes:
+      type: object
+      properties:
+        address:
+          type: string
+          description: Token contract address
+          example: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        name:
+          type: string
+          description: Token name
+          example: "Wrapped Ether"
+        symbol:
+          type: string
+          description: Token symbol
+          example: "WETH"
+        decimals:
+          type: integer
+          description: Token decimals
+          example: 18
+        image_url:
+          type: string
+          description: Token image URL
+          example: "https://coin-images.coingecko.com/coins/images/2518/large/weth.png?1696503332"
+        coingecko_coin_id:
+          type: string
+          description: CoinGecko coin ID
+          example: "weth"
+        total_supply:
+          type: string
+          description: Total token supply
+          example: "2363720769889892491835236.0"
+        normalized_total_supply:
+          type: string
+          description: Normalized total supply
+          example: "2363720.76988989"
+        price_usd:
+          type: string
+          description: Current USD price
+          example: "3851.5632727676"
+        fdv_usd:
+          type: string
+          description: Fully diluted valuation in USD
+          example: "9098756423.42614"
+        total_reserve_in_usd:
+          type: string
+          description: Total reserve in USD
+          example: "1878279660.9566"
+        volume_usd:
+          type: object
+          description: Volume data in USD
+          properties:
+            h24:
+              type: string
+              description: 24-hour volume
+              example: "1108476203.4471"
+        market_cap_usd:
+          type: string
+          description: Market cap in USD
+          example: "9076452125.5596"
+
+    GeckoTokenRelationships:
+      type: object
+      properties:
+        top_pools:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+                  type:
+                    type: string
+                    example: "pool"
+
+    GeckoTokenData:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          example: "token"
+        attributes:
+          $ref: "#/components/schemas/GeckoTokenAttributes"
+        relationships:
+          $ref: "#/components/schemas/GeckoTokenRelationships"
+
+    GeckoTokenDetailsResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/GeckoTokenData"
+        included:
+          type: array
+          description: Included related resources (e.g., top pools) when requested via include=top_pools
+          items:
+            type: object
     ApiResponse:
       type: object
       properties:
@@ -1773,6 +2439,10 @@ components:
         error:
           type: string
           description: Error message
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO timestamp when the error occurred
 
     AccountResponse:
       type: object
@@ -2547,3 +3217,198 @@ components:
                   type: number
                   description: Total number of active alerts
                   example: 1
+
+    CopyTradeConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the copy trade configuration
+          example: "copy_1703123456789_abc123def"
+        accountName:
+          type: string
+          description: Name of the account that owns this configuration
+          example: "myWallet"
+        targetWalletAddress:
+          type: string
+          description: Address of the wallet to copy trades from
+          example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        delegationAmount:
+          type: string
+          description: Amount of ETH delegated for copy trading
+          example: "0.5"
+        maxSlippage:
+          type: number
+          description: Maximum slippage percentage (0.05 = 5%)
+          example: 0.05
+        isActive:
+          type: boolean
+          description: Whether the copy trading configuration is active
+          example: true
+        createdAt:
+          type: number
+          description: Timestamp when the configuration was created
+          example: 1703123456
+        lastExecutedAt:
+          type: number
+          description: Timestamp when the last copy trade was executed
+          example: 1703124000
+        totalExecutedTrades:
+          type: number
+          description: Total number of copy trades executed
+          example: 5
+        totalSpent:
+          type: string
+          description: Total amount of ETH spent on copy trades
+          example: "2.5"
+
+    CopyTradeEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the copy trade event
+          example: "event_1703123456789_xyz789abc"
+        configId:
+          type: string
+          description: ID of the copy trade configuration that triggered this event
+          example: "copy_1703123456789_abc123def"
+        accountName:
+          type: string
+          description: Name of the account that executed the copy trade
+          example: "myWallet"
+        targetWalletAddress:
+          type: string
+          description: Address of the wallet being copied
+          example: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+        tokenAddress:
+          type: string
+          description: Address of the token that was bought
+          example: "0x4200000000000000000000000000000000000006"
+        tokenSymbol:
+          type: string
+          description: Symbol of the token that was bought
+          example: "WETH"
+        tokenName:
+          type: string
+          description: Name of the token that was bought
+          example: "Wrapped Ether"
+        originalAmount:
+          type: string
+          description: Original amount from the target wallet transaction
+          example: "1.0"
+        copiedAmount:
+          type: string
+          description: Amount copied in the copy trade
+          example: "0.5"
+        transactionHash:
+          type: string
+          description: Hash of the copy trade transaction
+          example: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        timestamp:
+          type: number
+          description: Timestamp when the copy trade was executed
+          example: 1703123456
+        status:
+          type: string
+          enum: [pending, success, failed]
+          description: Status of the copy trade execution
+          example: "success"
+        errorMessage:
+          type: string
+          description: Error message if the copy trade failed
+          example: "Insufficient balance"
+
+    CopyTradeExecution:
+      type: object
+      properties:
+        success:
+          type: boolean
+    UpdateWebhookAddressesRequest:
+      type: object
+      required:
+        - addresses
+      properties:
+        addresses:
+          type: array
+          items:
+            type: string
+            pattern: "^0x[a-fA-F0-9]{40}$"
+          description: Complete list of external addresses to monitor
+          example: ["0xec88d4516ebc66ef88b5ff11255d5a30c8232cd1", "0x2211d1d0020daea8039e46cf1367962070d77da9"]
+        walletId:
+          type: string
+          description: Wallet ID associated to the webhook (optional for external address tracking)
+          example: ""
+
+    WebhookDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The webhook ID
+          example: "689980a3f3e21b15f0b52893"
+        name:
+          type: string
+          description: The webhook name
+          example: "Wallet Activity Webhook"
+        url:
+          type: string
+          description: The webhook notification URL
+          example: "https://your-domain.com/webhooks/cdp"
+        addresses:
+          type: array
+          items:
+            type: string
+          description: List of monitored wallet addresses
+          example: ["0xec88d4516ebc66ef88b5ff11255d5a30c8232cd1"]
+        addressCount:
+          type: number
+          description: Number of addresses being monitored
+          example: 1
+        walletId:
+          type: string
+          description: The wallet ID (empty for external addresses)
+          example: ""
+        eventType:
+          type: string
+          description: The webhook event type
+          example: "wallet_activity"
+        networkId:
+          type: string
+          description: The blockchain network
+          example: "base-mainnet"
+        status:
+          type: string
+          description: The webhook status
+          example: "active"
+        createdAt:
+          type: string
+          format: date-time
+          description: When the webhook was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the webhook was last updated
+
+    WebhookUpdateResponse:
+      type: object
+      properties:
+        webhookId:
+          type: string
+          description: The CDP webhook ID that was updated
+          example: "689980a3f3e21b15f0b52893"
+        addressCount:
+          type: number
+          description: Number of addresses in the webhook
+          example: 4
+        addresses:
+          type: array
+          items:
+            type: string
+          description: List of all target wallet addresses
+          example: ["0xec88d4516ebc66ef88b5ff11255d5a30c8232cd1", "0x2211d1d0020daea8039e46cf1367962070d77da9"]
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the webhook was last updated

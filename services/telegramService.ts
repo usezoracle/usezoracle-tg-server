@@ -219,4 +219,174 @@ export class TelegramService {
 
 <a href="https://basescan.org/tx/${transactionHash}">View on BaseScan</a>`;
   }
+
+  /**
+   * Send copy trade success notification
+   */
+  async sendCopyTradeNotification(
+    accountName: string,
+    targetWalletAddress: string,
+    tokenSymbol: string,
+    tokenName: string,
+    copiedAmount: string,
+    transactionHash: string,
+    originalTxHash: string
+  ): Promise<void> {
+    try {
+      if (!this.botToken) {
+        console.log('⚠️  Copy trade notification skipped - BOT_TOKEN not set');
+        return;
+      }
+
+      // Find users by account name (assuming account name is linked to user)
+      const users = await this.findUsersByAccountName(accountName);
+      
+      if (users.length === 0) {
+        console.log(`No users found for account name: ${accountName}`);
+        return;
+      }
+
+      const message = this.formatCopyTradeNotification(
+        targetWalletAddress,
+        tokenSymbol,
+        tokenName,
+        copiedAmount,
+        transactionHash,
+        originalTxHash
+      );
+      
+      for (const user of users) {
+        const success = await this.sendMessage(user.telegramId, message);
+        if (success) {
+          console.log(`✅ Copy trade notification sent to user ${user.telegramId} (${user.username || user.firstName || 'Unknown'})`);
+        } else {
+          console.error(`❌ Failed to send copy trade notification to user ${user.telegramId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending copy trade notification:', error);
+    }
+  }
+
+  /**
+   * Find users by account name
+   */
+  async findUsersByAccountName(accountName: string): Promise<IUser[]> {
+    try {
+      console.log(`🔍 Searching for users with account name: ${accountName}`);
+      
+      const users = await User.find({
+        'settings.cdpAccountName': accountName,
+        isActive: true,
+        'settings.notifications': true
+      });
+
+      console.log(`📊 Found ${users.length} users for account name: ${accountName}`);
+      return users;
+    } catch (error) {
+      console.error('Error finding users by account name:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Format copy trade notification message
+   */
+  public formatCopyTradeNotification(
+    targetWalletAddress: string,
+    tokenSymbol: string,
+    tokenName: string,
+    copiedAmount: string,
+    transactionHash: string,
+    originalTxHash: string
+  ): string {
+    const shortTarget = `${targetWalletAddress.slice(0, 6)}...${targetWalletAddress.slice(-4)}`;
+    const shortTxHash = `${transactionHash.slice(0, 6)}...${transactionHash.slice(-4)}`;
+    const shortOriginalTx = `${originalTxHash.slice(0, 6)}...${originalTxHash.slice(-4)}`;
+    
+    return `🎯 <b>Copy Trade Executed Successfully!</b>
+
+🪙 <b>Token:</b> ${tokenSymbol} (${tokenName})
+💰 <b>Amount:</b> ${copiedAmount} ETH
+👤 <b>Target Wallet:</b> <code>${shortTarget}</code>
+🔗 <b>Copy Trade TX:</b> <code>${shortTxHash}</code>
+📋 <b>Original TX:</b> <code>${shortOriginalTx}</code>
+
+✅ <b>Status:</b> Successfully mirrored the trade!
+
+<a href="https://basescan.org/tx/${transactionHash}">View Copy Trade on BaseScan</a>
+<a href="https://basescan.org/tx/${originalTxHash}">View Original Trade on BaseScan</a>`;
+  }
+
+  /**
+   * Send failed copy trade notification
+   */
+  async sendFailedCopyTradeNotification(
+    accountName: string,
+    targetWalletAddress: string,
+    tokenSymbol: string,
+    tokenName: string,
+    errorMessage: string
+  ): Promise<void> {
+    try {
+      if (!this.botToken) {
+        console.log('⚠️  Failed copy trade notification skipped - BOT_TOKEN not set');
+        return;
+      }
+
+      // Find users by account name
+      const users = await this.findUsersByAccountName(accountName);
+      
+      if (users.length === 0) {
+        console.log(`No users found for account name: ${accountName}`);
+        return;
+      }
+
+      const message = this.formatFailedCopyTradeNotification(
+        targetWalletAddress,
+        tokenSymbol,
+        tokenName,
+        errorMessage
+      );
+      
+      for (const user of users) {
+        const success = await this.sendMessage(user.telegramId, message);
+        if (success) {
+          console.log(`✅ Failed copy trade notification sent to user ${user.telegramId} (${user.username || user.firstName || 'Unknown'})`);
+        } else {
+          console.error(`❌ Failed to send failed copy trade notification to user ${user.telegramId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending failed copy trade notification:', error);
+    }
+  }
+
+  /**
+   * Format failed copy trade notification message
+   */
+  public formatFailedCopyTradeNotification(
+    targetWalletAddress: string,
+    tokenSymbol: string,
+    tokenName: string,
+    errorMessage: string
+  ): string {
+    const shortTarget = `${targetWalletAddress.slice(0, 6)}...${targetWalletAddress.slice(-4)}`;
+    
+    return `❌ <b>Copy Trade Failed!</b>
+
+🪙 <b>Token:</b> ${tokenSymbol} (${tokenName})
+👤 <b>Target Wallet:</b> <code>${shortTarget}</code>
+🚫 <b>Error:</b> ${errorMessage}
+
+⚠️ <b>Status:</b> Failed to mirror the trade
+
+💡 <b>Possible reasons:</b>
+• Insufficient delegation amount
+• Low liquidity for the token
+• Network congestion
+• Slippage too high
+
+Please check your copy trade configuration and try again.`;
+  }
 }

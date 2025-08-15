@@ -37,13 +37,30 @@ Monitor trading activities and transaction status.
 - `failed_transaction`: Transaction fails
 - `large_trade`: Trade amount exceeds threshold
 
+**Automatic Triggering:**
+Trade alerts are automatically created when:
+- ✅ **Swap Executions** - When swaps are executed via `/api/swaps/execute`
+- ✅ **Snipe Operations** - When tokens are sniped via `/api/monitoring/snipe`
+- ✅ **Copy Trading** - When copy trades are executed
+- ✅ **Failed Transactions** - When any transaction fails
+
+**Large Trade Detection:**
+Large trades are automatically detected based on:
+- **ETH trades**: > 1 ETH
+- **Token trades**: > 1 ETH equivalent value
+
 ### Market Alerts
 Track market movements and opportunities.
 
 **Alert Types:**
-- `price_spike`: Token price spikes above threshold
-- `volume_surge`: Trading volume surges above threshold
+- `price_spike`: Token price spikes above threshold (threshold in USD)
+- `volume_surge`: Trading volume surges above threshold (threshold in token units)
 - `market_opportunity`: Market conditions meet criteria
+
+**Threshold Units:**
+- **Price Spikes**: Threshold in USD (e.g., "2500.00" for $2,500)
+- **Volume Surges**: Threshold in token units (e.g., "1000000" for 1M tokens)
+- **Market Opportunities**: Threshold varies by implementation
 
 ### Copy Trading Alerts
 Monitor specific wallets for copy trading opportunities.

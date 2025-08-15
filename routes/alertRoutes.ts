@@ -1,6 +1,10 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+
 import { AlertsService } from '../services/alertsService.js';
 import { ApiResponse, AlertResponse } from '../types/index.js';
+import { validateParams, validateQuery, validateBody, alertIdParamSchema, priceAlertBodySchema, portfolioAlertBodySchema, tradeAlertBodySchema, marketAlertBodySchema, setupCopyTradingBodySchema, copyTradingStatusQuerySchema } from '../middleware/requestValidation.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 let alertsService: AlertsService | null = null;
@@ -43,7 +47,12 @@ function getAlertsService(): AlertsService {
  *       500:
  *         description: Internal server error
  */
-router.get('/', async (req: Request, res: Response) => {
+const alertsQuerySchema = z.object({
+  accountName: z.string().optional(),
+  alertType: z.enum(['price','portfolio','trade','market','copy']).optional()
+});
+
+router.get('/', validateQuery(alertsQuerySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, alertType } = req.query;
     
@@ -60,7 +69,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting alerts:', error);
+    logger.error({ err: error }, 'Error getting alerts');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to get alerts'
@@ -109,23 +118,9 @@ router.get('/', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/price', async (req: Request, res: Response) => {
+router.post('/price', validateBody(priceAlertBodySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, tokenAddress, targetPrice, condition } = req.body;
-    
-    if (!accountName || !tokenAddress || !targetPrice || !condition) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName, tokenAddress, targetPrice, and condition are required'
-      } as ApiResponse);
-    }
-    
-    if (!['above', 'below'].includes(condition)) {
-      return res.status(400).json({
-        success: false,
-        error: 'condition must be "above" or "below"'
-      } as ApiResponse);
-    }
     
     const alert = await getAlertsService().createPriceAlert(
       accountName,
@@ -142,7 +137,7 @@ router.post('/price', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating price alert:', error);
+    logger.error({ err: error }, 'Error creating price alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to create price alert'
@@ -192,30 +187,9 @@ router.post('/price', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/portfolio', async (req: Request, res: Response) => {
+router.post('/portfolio', validateBody(portfolioAlertBodySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, alertType, threshold, condition } = req.body;
-    
-    if (!accountName || !alertType || !threshold || !condition) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName, alertType, threshold, and condition are required'
-      } as ApiResponse);
-    }
-    
-    if (!['value_increase', 'value_decrease', 'pnl_threshold'].includes(alertType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType must be "value_increase", "value_decrease", or "pnl_threshold"'
-      } as ApiResponse);
-    }
-    
-    if (!['above', 'below'].includes(condition)) {
-      return res.status(400).json({
-        success: false,
-        error: 'condition must be "above" or "below"'
-      } as ApiResponse);
-    }
     
     const alert = await getAlertsService().createPortfolioAlert(
       accountName,
@@ -232,7 +206,7 @@ router.post('/portfolio', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating portfolio alert:', error);
+    logger.error({ err: error }, 'Error creating portfolio alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to create portfolio alert'
@@ -279,23 +253,9 @@ router.post('/portfolio', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/trade', async (req: Request, res: Response) => {
+router.post('/trade', validateBody(tradeAlertBodySchema), async (req: Request, res: Response) => {
   try {
     const { accountName, alertType, tokenAddress, amount } = req.body;
-    
-    if (!accountName || !alertType) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName and alertType are required'
-      } as ApiResponse);
-    }
-    
-    if (!['successful_trade', 'failed_transaction', 'large_trade'].includes(alertType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType must be "successful_trade", "failed_transaction", or "large_trade"'
-      } as ApiResponse);
-    }
     
     const alert = await getAlertsService().createTradeAlert(
       accountName,
@@ -312,7 +272,7 @@ router.post('/trade', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating trade alert:', error);
+    logger.error({ err: error }, 'Error creating trade alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to create trade alert'
@@ -361,30 +321,9 @@ router.post('/trade', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/market', async (req: Request, res: Response) => {
+router.post('/market', validateBody(marketAlertBodySchema), async (req: Request, res: Response) => {
   try {
     const { alertType, threshold, condition, tokenAddress } = req.body;
-    
-    if (!alertType || !threshold || !condition) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType, threshold, and condition are required'
-      } as ApiResponse);
-    }
-    
-    if (!['price_spike', 'volume_surge', 'market_opportunity'].includes(alertType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType must be "price_spike", "volume_surge", or "market_opportunity"'
-      } as ApiResponse);
-    }
-    
-    if (!['above', 'below'].includes(condition)) {
-      return res.status(400).json({
-        success: false,
-        error: 'condition must be "above" or "below"'
-      } as ApiResponse);
-    }
     
     const alert = await getAlertsService().createMarketAlert(
       alertType,
@@ -401,7 +340,7 @@ router.post('/market', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating market alert:', error);
+    logger.error({ err: error }, 'Error creating market alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to create market alert'
@@ -413,8 +352,28 @@ router.post('/market', async (req: Request, res: Response) => {
  * @swagger
  * /api/alerts/copy-trading:
  *   post:
- *     summary: Create a copy trading alert
- *     description: Create an alert for copy trading activities
+ *     summary: Monitor wallet for copy trading (DEPRECATED)
+ *     description: This endpoint is deprecated. Copy trading alerts are now created automatically when copy trades are executed or when target wallets make trades. Use the copy trading service endpoints instead.
+ *     tags:
+ *       - Alerts
+ *     responses:
+ *       410:
+ *         description: This endpoint is deprecated. Copy trading alerts are created automatically.
+ */
+router.post('/copy-trading', async (req: Request, res: Response) => {
+  res.status(410).json({
+    success: false,
+    error: 'This endpoint is deprecated. Copy trading alerts are now created automatically when copy trades are executed or when target wallets make trades. Use the copy trading service endpoints instead.',
+    message: 'Copy trading alerts are created automatically by the copy trading service when trades are detected.'
+  } as ApiResponse);
+});
+
+/**
+ * @swagger
+ * /api/alerts/setup-copy-trading:
+ *   post:
+ *     summary: Setup copy trading configuration
+ *     description: Create a copy trading configuration that will automatically create alerts when the target wallet makes trades
  *     tags:
  *       - Alerts
  *     requestBody:
@@ -425,71 +384,176 @@ router.post('/market', async (req: Request, res: Response) => {
  *             type: object
  *             required:
  *               - accountName
- *               - alertType
- *               - walletAddress
+ *               - targetWalletAddress
+ *               - delegationAmount
  *             properties:
  *               accountName:
  *                 type: string
- *                 description: The account name
- *               alertType:
+ *                 description: The account name that will copy trade
+ *               targetWalletAddress:
  *                 type: string
- *                 enum: [wallet_activity, large_transaction, new_token_purchase]
- *                 description: Type of copy trading alert
- *               walletAddress:
+ *                 description: The wallet address to monitor and copy
+ *               delegationAmount:
  *                 type: string
- *                 description: The wallet address to monitor
- *               tokenAddress:
- *                 type: string
- *                 description: The token contract address (optional)
- *               amount:
- *                 type: string
- *                 description: The transaction amount (optional)
+ *                 description: The maximum amount of ETH to use for copy trading
+ *               maxSlippage:
+ *                 type: number
+ *                 description: Maximum slippage tolerance (default 0.05 = 5%)
  *     responses:
  *       200:
- *         description: Copy trading alert created successfully
+ *         description: Copy trading configuration created successfully
  *       400:
  *         description: Bad request
  *       500:
  *         description: Internal server error
  */
-router.post('/copy-trading', async (req: Request, res: Response) => {
+router.post('/setup-copy-trading', validateBody(setupCopyTradingBodySchema), async (req: Request, res: Response) => {
   try {
-    const { accountName, alertType, walletAddress, tokenAddress, amount } = req.body;
+    const { accountName, targetWalletAddress, delegationAmount, maxSlippage = 0.05 } = req.body;
     
-    if (!accountName || !alertType || !walletAddress) {
-      return res.status(400).json({
-        success: false,
-        error: 'accountName, alertType, and walletAddress are required'
-      } as ApiResponse);
-    }
+    // Import and use the copy trading service
+    const { CopyTradingService } = await import('../services/copyTradingService.js');
+    const copyTradingService = CopyTradingService.getInstance();
     
-    if (!['wallet_activity', 'large_transaction', 'new_token_purchase'].includes(alertType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'alertType must be "wallet_activity", "large_transaction", or "new_token_purchase"'
-      } as ApiResponse);
-    }
-    
-    const alert = await getAlertsService().createCopyTradingAlert(
+    const config = await copyTradingService.createCopyTradeConfig(
       accountName,
-      alertType,
-      walletAddress,
-      tokenAddress,
-      amount
+      targetWalletAddress,
+      delegationAmount,
+      maxSlippage
     );
     
     const response: ApiResponse = {
       success: true,
-      data: alert,
-      message: `Copy trading alert created: ${alertType} for wallet ${walletAddress}`
+      data: config,
+      message: `Copy trading configuration created for ${accountName} monitoring ${targetWalletAddress}`
     };
 
     res.json(response);
   } catch (error) {
-    console.error('Error creating copy trading alert:', error);
+    logger.error({ err: error }, 'Error setting up copy trading');
     res.status(500).json({
       success: false,
-      error: (error as Error).message || 'Failed to create copy trading alert'
+      error: (error as Error).message || 'Failed to setup copy trading'
+    } as ApiResponse);
+  }
+});
+
+/**
+ * @swagger
+ * /api/alerts/copy-trading/status:
+ *   get:
+ *     summary: Get copy trading status
+ *     description: Get the status of copy trading configurations and recent events
+ *     tags:
+ *       - Alerts
+ *     parameters:
+ *       - in: query
+ *         name: accountName
+ *         schema:
+ *           type: string
+ *         description: Filter by account name
+ *     responses:
+ *       200:
+ *         description: Copy trading status retrieved successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/copy-trading/status', validateQuery(copyTradingStatusQuerySchema), async (req: Request, res: Response) => {
+  try {
+    const { accountName } = req.query;
+    
+    // Import and use the copy trading service
+    const { CopyTradingService } = await import('../services/copyTradingService.js');
+    const copyTradingService = CopyTradingService.getInstance();
+    
+    const configs = await copyTradingService.getCopyTradeConfigs(accountName as string);
+    const events = await copyTradingService.getCopyTradeEvents(accountName as string);
+    
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        configs,
+        events,
+        summary: {
+          totalConfigs: configs.length,
+          activeConfigs: configs.filter(c => c.isActive).length,
+          totalEvents: events.length,
+          successfulTrades: events.filter(e => e.status === 'success').length,
+          totalSpent: configs.reduce((sum, c) => sum + parseFloat(c.totalSpent), 0).toFixed(6)
+        }
+      },
+      message: `Copy trading status for ${accountName}: ${configs.filter(c => c.isActive).length} active configs, ${events.filter(e => e.status === 'success').length} successful trades`
+    };
+
+    res.json(response);
+  } catch (error) {
+    logger.error({ err: error }, 'Error getting copy trading status');
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message || 'Failed to get copy trading status'
+    } as ApiResponse);
+  }
+});
+
+/**
+ * @swagger
+ * /api/alerts/copy-trading/stop:
+ *   post:
+ *     summary: Stop copy trading configuration
+ *     description: Deactivate a copy trading configuration
+ *     tags:
+ *       - Alerts
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - configId
+ *             properties:
+ *               configId:
+ *                 type: string
+ *                 description: The configuration ID to stop
+ *     responses:
+ *       200:
+ *         description: Copy trading configuration stopped successfully
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/copy-trading/stop', async (req: Request, res: Response) => {
+  try {
+    const { configId } = req.body;
+    
+    if (!configId) {
+      return res.status(400).json({
+        success: false,
+        error: 'configId is required'
+      } as ApiResponse);
+    }
+    
+    // Import and use the copy trading service
+    const { CopyTradingService } = await import('../services/copyTradingService.js');
+    const copyTradingService = CopyTradingService.getInstance();
+    
+    const updatedConfig = await copyTradingService.updateCopyTradeConfig(configId, {
+      isActive: false
+    });
+    
+    const response: ApiResponse = {
+      success: true,
+      data: updatedConfig,
+      message: `Copy trading configuration ${configId} stopped successfully`
+    };
+
+    res.json(response);
+  } catch (error) {
+    logger.error({ err: error }, 'Error stopping copy trading');
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message || 'Failed to stop copy trading'
     } as ApiResponse);
   }
 });
@@ -517,9 +581,9 @@ router.post('/copy-trading', async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.delete('/:alertId', async (req: Request, res: Response) => {
+router.delete('/:alertId', validateParams(alertIdParamSchema), async (req: Request, res: Response) => {
   try {
-    const { alertId } = req.params;
+  const alertId = req.params.alertId as string;
     
     const deleted = await getAlertsService().deleteAlert(alertId);
     
@@ -537,7 +601,7 @@ router.delete('/:alertId', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error deleting alert:', error);
+    logger.error({ err: error }, 'Error deleting alert');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to delete alert'
@@ -578,7 +642,7 @@ router.post('/check', async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error checking alerts:', error);
+    logger.error({ err: error }, 'Error checking alerts');
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to check alerts'

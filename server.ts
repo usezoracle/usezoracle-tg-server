@@ -1,15 +1,16 @@
+import { fileURLToPath } from "url";
+import { join } from "path";
+
 import dotenv from "dotenv";
 dotenv.config();
-
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
+import helmet from "helmet";
 import YAML from "yamljs";
-import { existsSync } from "fs";
-import { join } from "path";
-import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
 import mongoose from "mongoose";
+
 import { accountRoutes } from "./routes/accountRoutes.js";
 import { transactionRoutes } from "./routes/transactionRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -21,14 +22,18 @@ import { snipeRoutes } from "./routes/snipeRoutes.js";
 import { positionRoutes } from "./routes/positionRoutes.js";
 import { alertRoutes } from "./routes/alertRoutes.js";
 import { callbackRoutes } from "./routes/callbackRoutes.js";
+import { tokenDetailsRoutes } from "./routes/tokenDetailsRoutes.js";
+import { webhooksCdpRoutes } from "./routes/webhooksCdpRoutes.js";
+import { cdpWebhookMgmtRoutes } from "./routes/cdpWebhookMgmtRoutes.js";
+import { config } from './config/index.js';
+import { logger } from './lib/logger.js';
 
 // Verify environment variables are loaded
-console.log('🔍 Environment check:');
-console.log('  BOT_TOKEN:', process.env.BOT_TOKEN ? '✅ Found' : '❌ Not found');
-console.log('  MONGODB_URI:', process.env.MONGODB_URI ? '✅ Found' : '❌ Not found');
+logger.info('🔍 Environment check:');
+logger.info({ present: Boolean(process.env.BOT_TOKEN) }, 'BOT_TOKEN present');
+logger.info({ present: Boolean(process.env.MONGODB_URI) }, 'MONGODB_URI present');
 
 const app = express();
-const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
 // MongoDB Connection (non-fatal if missing so /health still responds)
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -65,6 +70,7 @@ const limiter = rateLimit({
 });
 
 // Middleware
+app.use(helmet());
 app.use(cors({
   origin: '*', // Allow requests from any origin
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -153,6 +159,9 @@ app.use("/api/snipe", snipeRoutes);
 app.use("/api/positions", positionRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/callback", callbackRoutes);
+app.use("/api/token-details", tokenDetailsRoutes);
+app.use("/webhooks/cdp", webhooksCdpRoutes);
+app.use("/api/cdp/webhooks", cdpWebhookMgmtRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -162,10 +171,11 @@ app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`✅ Health check: http://localhost:${PORT}/health`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+const PORT = config.port;
+app.listen(PORT, () => {
+  logger.info({ port: PORT }, 'Server running');
+  logger.info(`Health check: http://localhost:${PORT}/health`);
+  logger.info(`API Documentation: http://localhost:${PORT}/api-docs`);
 });
 
 export default app;
