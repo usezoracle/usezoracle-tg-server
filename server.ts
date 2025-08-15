@@ -66,6 +66,7 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => ['/', '/health', '/ready', '/api-docs'].includes(req.path),
 });
 
 // Middleware
@@ -78,18 +79,35 @@ app.use(cors({
 app.use(express.json());
 app.use(limiter);
 
-// API Documentation
+// API Documentation (tolerate missing/invalid OpenAPI file in production)
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = process.env.NODE_ENV === 'production' 
-  ? process.cwd() 
+const __dirname = process.env.NODE_ENV === 'production'
+  ? process.cwd()
   : join(fileURLToPath(new URL('.', import.meta.url)));
 
-const swaggerDocument = YAML.load(join(__dirname, 'openapi.yaml'));
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "UseZoracle API Documentation",
-}));
+try {
+  const openapiPath = join(__dirname, 'openapi.yaml');
+  if (!existsSync(openapiPath)) {
+    console.warn(`⚠️  OpenAPI spec not found at ${openapiPath} - skipping /api-docs`);
+  } else {
+    const swaggerDocument = YAML.load(openapiPath);
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+      explorer: true,
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: "UseZoracle API Documentation",
+    }));
+    console.log('📚 Swagger UI mounted at /api-docs');
+  }
+} catch (error) {
+  console.warn('⚠️  Failed to initialize Swagger UI - skipping /api-docs:', (error as Error).message);
+}
+
+// Root route - basic status page
+app.get('/', (_req, res) => {
+  res.type('html').send(
+    `<pre>UseZoracle API is running\n\n- Health: <a href="/health">/health</a>\n- Ready: <a href="/ready">/ready</a>\n- Docs: <a href="/api-docs">/api-docs</a></pre>`
+  );
+});
 
 // Health check
 app.get("/health", (req, res) => {
@@ -100,6 +118,33 @@ app.get("/health", (req, res) => {
       enabled: dbEnabled,
       connected: dbConnected,
     },
+  });
+});
+
+// Readiness check (used for deploy readiness)
+app.get("/ready", (req, res) => {
+  const envStatus = {
+    botToken: !!process.env.BOT_TOKEN,
+    mongodbUri: !!process.env.MONGODB_URI,
+    providerUrl: !!process.env.PROVIDER_URL,
+    cdp: {
+      apiKeyId: !!process.env.CDP_API_KEY_ID,
+      apiKeySecret: !!process.env.CDP_API_KEY_SECRET,
+      walletSecret: !!process.env.CDP_WALLET_SECRET,
+      network: process.env.CDP_NETWORK || 'base',
+    },
+  };
+
+  const ready = (!envStatus.mongodbUri || dbConnected) && envStatus.botToken;
+
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ready" : "not-ready",
+    timestamp: new Date().toISOString(),
+    db: {
+      enabled: dbEnabled,
+      connected: dbConnected,
+    },
+    env: envStatus,
   });
 });
 
