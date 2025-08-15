@@ -1,9 +1,11 @@
 import { Router } from "express";
+
 import { CdpService } from "../services/cdpService.js";
 import { TelegramService } from "../services/telegramService.js";
+import { logger } from '../lib/logger.js';
 
 const router = Router();
-const cdpService = CdpService.getInstance();
+const _cdpService = CdpService.getInstance();
 
 // Webhook callback route
 router.post("/", async (req, res) => {
@@ -27,9 +29,9 @@ router.post("/", async (req, res) => {
     if (contractAddress.toLowerCase() === '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913') {
       isTargetToken = true;
       const humanValue = (parseInt(value) / Math.pow(10, 6)).toFixed(6); // USDC has 6 decimals
-      console.log(`💵 USDC Transfer: ${from} → ${to} (${humanValue} USDC)`);
-      console.log(`   Transaction: ${transactionHash}`);
-      console.log(`   Network: ${network}`);
+      logger.info(`💵 USDC Transfer: ${from} → ${to} (${humanValue} USDC)`);
+      logger.info(`   Transaction: ${transactionHash}`);
+      logger.info(`   Network: ${network}`);
       
         // Send Telegram notification for USDC transfer
   try {
@@ -37,19 +39,19 @@ router.post("/", async (req, res) => {
     if (telegramService.isBotTokenAvailable()) {
       await telegramService.sendUSDCNotification(to, from, humanValue, transactionHash, network);
     } else {
-      console.log('⚠️  USDC notification skipped - BOT_TOKEN not available');
+      logger.warn('⚠️  USDC notification skipped - BOT_TOKEN not available');
     }
   } catch (error) {
-    console.error('Error sending USDC notification:', error);
+    logger.error({ error }, 'Error sending USDC notification');
   }
     }
   } else if (eventType === 'transaction') {
     // Check if it's an ETH transaction (native token)
     isTargetToken = true;
     const ethValue = (parseInt(value) / Math.pow(10, 18)).toFixed(6);
-    console.log(`🪙 ETH Transfer: ${from} → ${to} (${ethValue} ETH)`);
-    console.log(`   Transaction: ${transactionHash}`);
-    console.log(`   Network: ${network}`);
+    logger.info(`🪙 ETH Transfer: ${from} → ${to} (${ethValue} ETH)`);
+    logger.info(`   Transaction: ${transactionHash}`);
+    logger.info(`   Network: ${network}`);
     
     // Send Telegram notification for ETH transfer
     try {
@@ -57,10 +59,10 @@ router.post("/", async (req, res) => {
       if (telegramService.isBotTokenAvailable()) {
         await telegramService.sendETHNotification(to, from, ethValue, transactionHash, network);
       } else {
-        console.log('⚠️  ETH notification skipped - BOT_TOKEN not available');
+        logger.warn('⚠️  ETH notification skipped - BOT_TOKEN not available');
       }
     } catch (error) {
-      console.error('Error sending ETH notification:', error);
+      logger.error({ error }, 'Error sending ETH notification');
     }
   }
 

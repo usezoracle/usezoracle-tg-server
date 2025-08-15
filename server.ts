@@ -42,18 +42,18 @@ let dbConnected = false;
 let dbEnabled = false;
 
 if (!MONGODB_URI) {
-  console.warn('⚠️  MONGODB_URI not set - starting without database connection');
+  logger.warn('⚠️  MONGODB_URI not set - starting without database connection');
 } else {
   dbEnabled = true;
   mongoose
     .connect(MONGODB_URI)
     .then(() => {
       dbConnected = true;
-      console.log('✅ Connected to MongoDB successfully');
+      logger.info('✅ Connected to MongoDB successfully');
     })
     .catch((error) => {
       dbConnected = false;
-      console.error('❌ MongoDB connection error (continuing without DB):', error);
+      logger.error({ error }, '❌ MongoDB connection error (continuing without DB)');
     });
 }
 
@@ -89,7 +89,7 @@ const __dirname = process.env.NODE_ENV === 'production'
 try {
   const openapiPath = join(__dirname, 'openapi.yaml');
   if (!existsSync(openapiPath)) {
-    console.warn(`⚠️  OpenAPI spec not found at ${openapiPath} - skipping /api-docs`);
+    logger.warn(`⚠️  OpenAPI spec not found at ${openapiPath} - skipping /api-docs`);
   } else {
     const swaggerDocument = YAML.load(openapiPath);
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
@@ -97,10 +97,10 @@ try {
       customCss: '.swagger-ui .topbar { display: none }',
       customSiteTitle: "UseZoracle API Documentation",
     }));
-    console.log('📚 Swagger UI mounted at /api-docs');
+    logger.info('📚 Swagger UI mounted at /api-docs');
   }
 } catch (error) {
-  console.warn('⚠️  Failed to initialize Swagger UI - skipping /api-docs:', (error as Error).message);
+  logger.warn({ error }, '⚠️  Failed to initialize Swagger UI - skipping /api-docs');
 }
 
 // Root route - basic status page
