@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
 import { IUser, User } from '../models/User.js';
+import { logger } from '../lib/logger.js';
 
 interface TelegramMessage {
   chat_id: string;
@@ -17,10 +17,10 @@ export class TelegramService {
     this.baseUrl = `https://api.telegram.org/bot${this.botToken}`;
     
     if (!this.botToken) {
-      console.warn('⚠️  BOT_TOKEN environment variable not set - Telegram notifications will be disabled');
-      console.log('💡 To enable Telegram notifications, set BOT_TOKEN=6474461918:AAFY9AmI6jnILvC8SQ4GszyAnu4bx-Xsu2Y');
+      logger.warn('⚠️  BOT_TOKEN environment variable not set - Telegram notifications will be disabled');
+      logger.info('💡 To enable Telegram notifications, set BOT_TOKEN=6474461918:AAFY9AmI6jnILvC8SQ4GszyAnu4bx-Xsu2Y');
     } else {
-      console.log('✅ TelegramService initialized with bot token:', this.botToken.substring(0, 10) + '...');
+      logger.info({ token: this.botToken.substring(0, 10) + '...' }, '✅ TelegramService initialized with bot token');
     }
   }
 
@@ -37,9 +37,9 @@ export class TelegramService {
   public isBotTokenAvailable(): boolean {
     const token = process.env.BOT_TOKEN || this.botToken;
     if (token) {
-      console.log('✅ BOT_TOKEN found:', token.substring(0, 10) + '...');
+      logger.info({ token: token.substring(0, 10) + '...' }, '✅ BOT_TOKEN found');
     } else {
-      console.log('⚠️  BOT_TOKEN not found in environment');
+      logger.warn('⚠️  BOT_TOKEN not found in environment');
     }
     return !!token;
   }
@@ -52,7 +52,7 @@ export class TelegramService {
       // Recheck BOT_TOKEN in case it was loaded after service initialization
       const currentBotToken = process.env.BOT_TOKEN || this.botToken;
       if (!currentBotToken) {
-        console.log('⚠️  Telegram notifications disabled - BOT_TOKEN not set');
+        logger.warn('⚠️  Telegram notifications disabled - BOT_TOKEN not set');
         return false;
       }
 
@@ -73,14 +73,14 @@ export class TelegramService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Telegram API error:', errorData);
+        logger.error({ errorData }, 'Telegram API error');
         return false;
       }
 
       const result = await response.json() as { ok: boolean };
       return result.ok === true;
     } catch (error) {
-      console.error('Error sending Telegram message:', error);
+      logger.error({ error }, 'Error sending Telegram message');
       return false;
     }
   }
@@ -90,7 +90,7 @@ export class TelegramService {
    */
   async findUsersByWalletAddress(walletAddress: string): Promise<IUser[]> {
     try {
-      console.log(`🔍 Searching for users with wallet address: ${walletAddress}`);
+      logger.info({ walletAddress }, '🔍 Searching for users with wallet address');
       
       // Use case-insensitive exact match to handle checksum/mixed-case addresses in DB
       const normalizedAddress = walletAddress.trim();
@@ -100,10 +100,10 @@ export class TelegramService {
         'settings.notifications': true
       });
 
-      console.log(`📊 Found ${users.length} users for wallet address: ${walletAddress}`);
+      logger.info({ walletAddress, userCount: users.length }, '📊 Found users for wallet address');
       return users;
     } catch (error) {
-      console.error('Error finding users by wallet address:', error);
+      logger.error({ error, walletAddress }, 'Error finding users by wallet address');
       return [];
     }
   }
@@ -120,14 +120,14 @@ export class TelegramService {
   ): Promise<void> {
     try {
       if (!this.botToken) {
-        console.log('⚠️  USDC notification skipped - BOT_TOKEN not set');
+        logger.warn('⚠️  USDC notification skipped - BOT_TOKEN not set');
         return;
       }
 
       const users = await this.findUsersByWalletAddress(toAddress);
       
       if (users.length === 0) {
-        console.log(`No users found for wallet address: ${toAddress}`);
+        logger.info({ toAddress }, 'No users found for wallet address');
         return;
       }
 
@@ -136,13 +136,13 @@ export class TelegramService {
       for (const user of users) {
         const success = await this.sendMessage(user.telegramId, message);
         if (success) {
-          console.log(`✅ USDC notification sent to user ${user.telegramId} (${user.username || user.firstName || 'Unknown'})`);
+          logger.info({ telegramId: user.telegramId, username: user.username || user.firstName || 'Unknown' }, '✅ USDC notification sent to user');
         } else {
-          console.error(`❌ Failed to send USDC notification to user ${user.telegramId}`);
+          logger.error({ telegramId: user.telegramId }, '❌ Failed to send USDC notification to user');
         }
       }
     } catch (error) {
-      console.error('Error sending USDC notification:', error);
+      logger.error({ error }, 'Error sending USDC notification');
     }
   }
 
@@ -158,14 +158,14 @@ export class TelegramService {
   ): Promise<void> {
     try {
       if (!this.botToken) {
-        console.log('⚠️  ETH notification skipped - BOT_TOKEN not set');
+        logger.warn('⚠️  ETH notification skipped - BOT_TOKEN not set');
         return;
       }
 
       const users = await this.findUsersByWalletAddress(toAddress);
       
       if (users.length === 0) {
-        console.log(`No users found for wallet address: ${toAddress}`);
+        logger.info({ toAddress }, 'No users found for wallet address');
         return;
       }
 
@@ -174,13 +174,13 @@ export class TelegramService {
       for (const user of users) {
         const success = await this.sendMessage(user.telegramId, message);
         if (success) {
-          console.log(`✅ ETH notification sent to user ${user.telegramId} (${user.username || user.firstName || 'Unknown'})`);
+          logger.info({ telegramId: user.telegramId, username: user.username || user.firstName || 'Unknown' }, '✅ ETH notification sent to user');
         } else {
-          console.error(`❌ Failed to send ETH notification to user ${user.telegramId}`);
+          logger.error({ telegramId: user.telegramId }, '❌ Failed to send ETH notification to user');
         }
       }
     } catch (error) {
-      console.error('Error sending ETH notification:', error);
+      logger.error({ error }, 'Error sending ETH notification');
     }
   }
 
@@ -234,7 +234,7 @@ export class TelegramService {
   ): Promise<void> {
     try {
       if (!this.botToken) {
-        console.log('⚠️  Copy trade notification skipped - BOT_TOKEN not set');
+        logger.warn('⚠️  Copy trade notification skipped - BOT_TOKEN not set');
         return;
       }
 
@@ -242,7 +242,7 @@ export class TelegramService {
       const users = await this.findUsersByAccountName(accountName);
       
       if (users.length === 0) {
-        console.log(`No users found for account name: ${accountName}`);
+        logger.info({ accountName }, 'No users found for account name');
         return;
       }
 
@@ -258,13 +258,13 @@ export class TelegramService {
       for (const user of users) {
         const success = await this.sendMessage(user.telegramId, message);
         if (success) {
-          console.log(`✅ Copy trade notification sent to user ${user.telegramId} (${user.username || user.firstName || 'Unknown'})`);
+          logger.info({ telegramId: user.telegramId, username: user.username || user.firstName || 'Unknown' }, '✅ Copy trade notification sent to user');
         } else {
-          console.error(`❌ Failed to send copy trade notification to user ${user.telegramId}`);
+          logger.error({ telegramId: user.telegramId }, '❌ Failed to send copy trade notification to user');
         }
       }
     } catch (error) {
-      console.error('Error sending copy trade notification:', error);
+      logger.error({ error }, 'Error sending copy trade notification');
     }
   }
 
@@ -273,7 +273,7 @@ export class TelegramService {
    */
   async findUsersByAccountName(accountName: string): Promise<IUser[]> {
     try {
-      console.log(`🔍 Searching for users with account name: ${accountName}`);
+      logger.info({ accountName }, '🔍 Searching for users with account name');
       
       const users = await User.find({
         'settings.cdpAccountName': accountName,
@@ -281,10 +281,10 @@ export class TelegramService {
         'settings.notifications': true
       });
 
-      console.log(`📊 Found ${users.length} users for account name: ${accountName}`);
+      logger.info({ accountName, userCount: users.length }, '📊 Found users for account name');
       return users;
     } catch (error) {
-      console.error('Error finding users by account name:', error);
+      logger.error({ error, accountName }, 'Error finding users by account name');
       return [];
     }
   }
@@ -330,7 +330,7 @@ export class TelegramService {
   ): Promise<void> {
     try {
       if (!this.botToken) {
-        console.log('⚠️  Failed copy trade notification skipped - BOT_TOKEN not set');
+        logger.warn('⚠️  Failed copy trade notification skipped - BOT_TOKEN not set');
         return;
       }
 
@@ -338,7 +338,7 @@ export class TelegramService {
       const users = await this.findUsersByAccountName(accountName);
       
       if (users.length === 0) {
-        console.log(`No users found for account name: ${accountName}`);
+        logger.info({ accountName }, 'No users found for account name');
         return;
       }
 
@@ -352,13 +352,13 @@ export class TelegramService {
       for (const user of users) {
         const success = await this.sendMessage(user.telegramId, message);
         if (success) {
-          console.log(`✅ Failed copy trade notification sent to user ${user.telegramId} (${user.username || user.firstName || 'Unknown'})`);
+          logger.info({ telegramId: user.telegramId, username: user.username || user.firstName || 'Unknown' }, '✅ Failed copy trade notification sent to user');
         } else {
-          console.error(`❌ Failed to send failed copy trade notification to user ${user.telegramId}`);
+          logger.error({ telegramId: user.telegramId }, '❌ Failed to send failed copy trade notification to user');
         }
       }
     } catch (error) {
-      console.error('Error sending failed copy trade notification:', error);
+      logger.error({ error }, 'Error sending failed copy trade notification');
     }
   }
 

@@ -1,8 +1,8 @@
 import { Router } from "express";
+import { z } from 'zod';
 
 import { CdpService } from "../services/cdpService.js";
 import { validateParams, validateQuery } from "../middleware/requestValidation.js";
-import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 
 const router = Router();
