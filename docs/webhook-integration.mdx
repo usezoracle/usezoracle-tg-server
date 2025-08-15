@@ -20,7 +20,6 @@ CDP_WEBHOOK_ID=your_webhook_id_here
 CDP_API_KEY_ID=your_api_key_id
 CDP_API_KEY_SECRET=your_api_key_secret
 CDP_WALLET_SECRET=your_wallet_secret
-CDP_API_KEY_JSON_PATH=path/to/cdp_api_key.json
 ```
 
 ## Integration Process
@@ -196,10 +195,12 @@ echo $CDP_WEBHOOK_ID
    echo $CDP_WALLET_SECRET
    ```
 
-2. **Check API key file**:
+2. **Verify environment variables**:
    ```bash
-   # Verify CDP API key file exists
-   ls -la $CDP_API_KEY_JSON_PATH
+   # Verify all required environment variables are set
+   echo "CDP_API_KEY_ID: ${CDP_API_KEY_ID:+SET}"
+   echo "CDP_API_KEY_SECRET: ${CDP_API_KEY_SECRET:+SET}"
+   echo "CDP_WALLET_SECRET: ${CDP_WALLET_SECRET:+SET}"
    ```
 
 ## Best Practices

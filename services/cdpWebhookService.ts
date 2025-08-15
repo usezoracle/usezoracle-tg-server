@@ -15,15 +15,26 @@ export class CdpWebhookService {
 
   private async configure(): Promise<void> {
     if (this.isConfigured) return;
+    
+    // Check for required environment variables
+    if (!process.env.CDP_API_KEY_ID) {
+      throw new Error("CDP_API_KEY_ID environment variable is required");
+    }
+    if (!process.env.CDP_API_KEY_SECRET) {
+      throw new Error("CDP_API_KEY_SECRET environment variable is required");
+    }
+    
     const sdk = await import("@coinbase/coinbase-sdk");
     const Coinbase = (sdk as any).Coinbase;
-    const keyPath = process.env.CDP_API_KEY_JSON_PATH;
-    if (!keyPath) {
-      logger.warn("CDP_API_KEY_JSON_PATH not set; Coinbase SDK configureFromJson() may fail");
-    }
-    Coinbase.configureFromJson({ filePath: keyPath || "./cdp_api_key.json" });
+    
+    // Configure using environment variables instead of JSON file
+    Coinbase.configure({
+      apiKeyId: process.env.CDP_API_KEY_ID,
+      apiKeySecret: process.env.CDP_API_KEY_SECRET,
+    });
+    
     this.isConfigured = true;
-    logger.info("Coinbase SDK configured for webhooks");
+    logger.info("Coinbase SDK configured for webhooks using environment variables");
   }
 
   async updateWalletActivityAddresses(params: {
