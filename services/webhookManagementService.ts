@@ -9,8 +9,8 @@ export class WebhookManagementService {
     private constructor() {
         // Initialize Coinbase configuration
         Coinbase.configure({
-            apiKeyName: process.env.CDP_API_KEY_ID,
-            privateKey: process.env.CDP_API_KEY_SECRET,
+            apiKeyName: process.env.COINBASE_API_KEY_NAME || "e28ed30c-d012-4c1e-991a-e361e1ca23ce",
+            privateKey: process.env.COINBASE_PRIVATE_KEY || "mfouEAg4pjPFwKKTyoHIai+ovxY+BxTLKXryn94SBKo3pARVcNAnHyKbuHhFhZ1MVciABGwWa8XqPUEZ9BsZCg==",
         });
     }
 
@@ -167,6 +167,61 @@ export class WebhookManagementService {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error({ err: error, webhookId }, 'Failed to get webhook addresses');
             throw new Error(errorMessage);
+        }
+    }
+
+    /**
+     * List all webhooks associated with the CDP account
+     */
+    async listAllWebhooks() {
+        try {
+            const webhooks = await Webhook.list();
+            
+            logger.info({
+                totalWebhooks: webhooks.data.length
+            }, 'Fetched all webhooks from CDP');
+
+            // Debug: Log the first webhook to see what methods are available
+            if (webhooks.data.length > 0) {
+                const firstWebhook = webhooks.data[0];
+                logger.debug({
+                    webhookKeys: Object.keys(firstWebhook),
+                    webhookMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(firstWebhook)),
+                    webhookType: typeof firstWebhook,
+                    webhookConstructor: firstWebhook.constructor.name
+                }, 'Debug: First webhook structure');
+            }
+
+            return webhooks.data.map((webhook: any) => {
+                // Only use methods that we know exist
+                const webhookInfo: any = {
+                    id: webhook.getId ? webhook.getId() : webhook.id,
+                    eventType: webhook.getEventType ? webhook.getEventType() : webhook.eventType,
+                    networkId: webhook.getNetworkId ? webhook.getNetworkId() : webhook.networkId,
+                    notificationUri: webhook.getNotificationURI ? webhook.getNotificationURI() : webhook.notificationUri
+                };
+
+                // Safely get eventTypeFilter if the method exists
+                if (webhook.getEventTypeFilter) {
+                    webhookInfo.eventTypeFilter = webhook.getEventTypeFilter();
+                } else if (webhook.eventTypeFilter) {
+                    webhookInfo.eventTypeFilter = webhook.eventTypeFilter;
+                }
+
+                // Only add timestamp fields if the methods exist
+                if (webhook.getCreatedAt) {
+                    webhookInfo.createdAt = webhook.getCreatedAt();
+                }
+                if (webhook.getUpdatedAt) {
+                    webhookInfo.updatedAt = webhook.getUpdatedAt();
+                }
+
+                return webhookInfo;
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error({ err: error }, 'Failed to list webhooks from CDP');
+            throw new Error(`Failed to list webhooks: ${errorMessage}`);
         }
     }
 }
