@@ -5,18 +5,19 @@ import { base } from "viem/chains";
 import { config } from '../config/index.js';
 import { logger } from '../lib/logger.js';
 
+import { WebhookManagementService } from './webhookManagementService.js';
+
 let cdp: CdpClient;
 let publicClient: any;
 
 const initializeClient = () => {
-
   // Debug environment variables
   logger.debug({
     hasApiKeyId: !!process.env.CDP_API_KEY_ID,
     hasApiKeySecret: !!process.env.CDP_API_KEY_SECRET,
     hasWalletSecret: !!process.env.CDP_WALLET_SECRET,
   }, 'CDP Client env check');
-  
+
   if (!cdp) {
     try {
       cdp = new CdpClient({
@@ -34,14 +35,15 @@ const initializeClient = () => {
   if (!publicClient) {
     // Use Ankr RPC endpoint for Base network to avoid rate limiting
     const ankrRpcUrl = config.providerUrl;
-    
+
     publicClient = createPublicClient({
       chain: base,
       transport: http(ankrRpcUrl),
     });
-    
+
     logger.info('Public client initialized with RPC endpoint');
   }
+
   return { cdp, publicClient };
 };
 
@@ -86,8 +88,12 @@ const PRICE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export class CdpService {
   private static instance: CdpService;
+  private webhookService: WebhookManagementService;
 
-  private constructor() {}
+  private constructor() {
+    // Initialize webhook service once in constructor
+    this.webhookService = WebhookManagementService.getInstance();
+  }
 
   static getInstance(): CdpService {
     if (!CdpService.instance) {
@@ -100,6 +106,14 @@ export class CdpService {
     try {
       const cdp = initializeClient();
       const account = await cdp.cdp.evm.createAccount({ name });
+
+      // Add the new account address to webhook monitoring
+      try {
+        await this.webhookService.addAddressToWebhook(account.address, '68a91f5bf3e21b15f0b528a9');
+        logger.info({ accountName: name, address: account.address }, 'Account address added to webhook monitoring');
+      } catch (webhookError) {
+        logger.warn({ err: webhookError, accountName: name, address: account.address }, 'Failed to add account to webhook monitoring, but account was created successfully');
+      }
       return {
         success: true,
         data: account,
@@ -211,10 +225,10 @@ export class CdpService {
           const metadata = await this.fetchTokenMetadata(
             balance.token.contractAddress
           );
-          
+
           // Get token price in USD
           const price = await this.fetchTokenPrice(metadata.symbol, balance.token.contractAddress);
-          
+
           // Calculate USD value
           const formattedAmount = this.formatAmount(
             balance.amount.amount.toString(),
@@ -268,9 +282,9 @@ export class CdpService {
   async testTokenMetadata(contractAddress: `0x${string}`) {
     try {
       logger.info({ contractAddress }, 'Testing token metadata fetching');
-      
+
       const metadata = await this.fetchTokenMetadata(contractAddress);
-      
+
       return {
         success: true,
         data: {
@@ -301,7 +315,7 @@ export class CdpService {
   async getTokenInfo(contractAddress: `0x${string}`, network: "base" | "base-sepolia" | "ethereum" = "base") {
     try {
       const metadata = await this.fetchTokenMetadata(contractAddress);
-      
+
       return {
         success: true,
         data: {
@@ -385,7 +399,7 @@ export class CdpService {
           };
         };
       };
-      
+
       if (data.data && data.data.attributes && data.data.attributes.price_usd) {
         const priceUsd = parseFloat(data.data.attributes.price_usd);
         return {
@@ -415,7 +429,7 @@ export class CdpService {
 
       const data = await response.json() as Record<string, { usd: number; usd_24h_change?: number }>;
       const coinId = this.getCoinGeckoId(symbol);
-      
+
       if (data[coinId]) {
         return {
           usd: data[coinId].usd,
@@ -565,7 +579,7 @@ export class CdpService {
             abi: erc20Abi,
             functionName: "name",
           }) as Promise<string>,
-          new Promise<string>((_, reject) => 
+          new Promise<string>((_, reject) =>
             setTimeout(() => reject(new Error('Name fetch timeout')), 10000)
           )
         ]);
@@ -581,7 +595,7 @@ export class CdpService {
             abi: erc20Abi,
             functionName: "symbol",
           }) as Promise<string>,
-          new Promise<string>((_, reject) => 
+          new Promise<string>((_, reject) =>
             setTimeout(() => reject(new Error('Symbol fetch timeout')), 10000)
           )
         ]);
@@ -597,7 +611,7 @@ export class CdpService {
             abi: erc20Abi,
             functionName: "decimals",
           }),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Decimals fetch timeout')), 10000)
           )
         ]));
