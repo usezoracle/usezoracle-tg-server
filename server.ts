@@ -24,6 +24,7 @@ import { positionRoutes } from "./routes/positionRoutes.js";
 import { alertRoutes } from "./routes/alertRoutes.js";
 import { callbackRoutes } from "./routes/callbackRoutes.js";
 import { tokenDetailsRoutes } from "./routes/tokenDetailsRoutes.js";
+import webhookManagementRoutes from "./routes/webhookManagementRoutes.js";
 import { webhooksCdpRoutes } from "./routes/webhooksCdpRoutes.js";
 import { cdpWebhookMgmtRoutes } from "./routes/cdpWebhookMgmtRoutes.js";
 import { config } from './config/index.js';
@@ -163,7 +164,7 @@ app.use("/callback", callbackRoutes);
 app.use("/api/token-details", tokenDetailsRoutes);
 app.use("/webhooks/cdp", webhooksCdpRoutes);
 app.use("/api/cdp/webhooks", cdpWebhookMgmtRoutes);
-
+app.use("/api/webhooks", webhookManagementRoutes);
 // Error handling
 app.use(errorHandler);
 

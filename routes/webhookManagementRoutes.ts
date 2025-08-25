@@ -1,12 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { WebhookManagementService } from '../services/webhookManagementService';
-import { logger } from '../lib/logger.js';
+import { logger } from '../lib/logger';
 
 const router = Router();
 const webhookService = WebhookManagementService.getInstance();
 
 // Static webhook ID - no need for users to pass it
-const WEBHOOK_ID = '689b805ef3e21b15f0b52898';
+const WEBHOOK_ID = '68a91f5bf3e21b15f0b528a9';
 
 /**
  * @route PUT /api/webhooks/addresses
@@ -141,6 +141,34 @@ router.get('/addresses', async (req: Request, res: Response) => {
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve webhook addresses',
+            message: errorMessage
+        });
+    }
+});
+
+/**
+ * @route GET /api/webhooks
+ * @desc List all webhooks associated with the CDP account (for testing)
+ * @access Private
+ */
+router.get('/', async (req: Request, res: Response) => {
+    try {
+        const webhooks = await webhookService.listAllWebhooks();
+
+        res.json({
+            success: true,
+            data: {
+                totalWebhooks: webhooks.length,
+                webhooks
+            }
+        });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error({ err: error }, 'Failed to list webhooks');
+
+        res.status(500).json({
+            success: false,
+            error: 'Failed to list webhooks',
             message: errorMessage
         });
     }
