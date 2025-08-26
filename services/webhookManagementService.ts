@@ -9,8 +9,8 @@ export class WebhookManagementService {
     private constructor() {
         // Initialize Coinbase configuration
         Coinbase.configure({
-            apiKeyName: process.env.COINBASE_API_KEY_NAME || "e28ed30c-d012-4c1e-991a-e361e1ca23ce",
-            privateKey: process.env.COINBASE_PRIVATE_KEY || "mfouEAg4pjPFwKKTyoHIai+ovxY+BxTLKXryn94SBKo3pARVcNAnHyKbuHhFhZ1MVciABGwWa8XqPUEZ9BsZCg==",
+            apiKeyName: process.env.CDP_API_KEY_ID,
+            privateKey: process.env.CDP_API_KEY_SECRET,
         });
     }
 

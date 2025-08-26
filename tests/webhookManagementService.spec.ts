@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { Webhook } from '@coinbase/coinbase-sdk';
+
 import { WebhookManagementService } from '../services/webhookManagementService.js';
 
 // Mock the Coinbase SDK
@@ -64,8 +66,7 @@ describe('WebhookManagementService', () => {
         };
 
         // Mock the Webhook.list method
-        const { Webhook } = require('@coinbase/coinbase-sdk');
-        Webhook.list.mockResolvedValue(mockWebhookList);
+        vi.mocked(Webhook.list).mockResolvedValue(mockWebhookList);
 
         service = WebhookManagementService.getInstance();
     });
@@ -108,8 +109,7 @@ describe('WebhookManagementService', () => {
         });
 
         it('should handle CDP API errors gracefully', async () => {
-            const { Webhook } = require('@coinbase/coinbase-sdk');
-            Webhook.list.mockRejectedValue(new Error('CDP API Error'));
+            vi.mocked(Webhook.list).mockRejectedValue(new Error('CDP API Error'));
 
             await expect(service.listAllWebhooks()).rejects.toThrow('Failed to list webhooks: CDP API Error');
         });

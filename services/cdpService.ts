@@ -109,7 +109,7 @@ export class CdpService {
 
       // Add the new account address to webhook monitoring
       try {
-        await this.webhookService.addAddressToWebhook(account.address, '68a91f5bf3e21b15f0b528a9');
+        await this.webhookService.addAddressToWebhook(account.address, process.env.DEPOSIT_WEBHOOK_ID!);
         logger.info({ accountName: name, address: account.address }, 'Account address added to webhook monitoring');
       } catch (webhookError) {
         logger.warn({ err: webhookError, accountName: name, address: account.address }, 'Failed to add account to webhook monitoring, but account was created successfully');
