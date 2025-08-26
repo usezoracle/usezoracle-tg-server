@@ -6,7 +6,7 @@ const router = Router();
 const webhookService = WebhookManagementService.getInstance();
 
 // Static webhook ID - no need for users to pass it
-const WEBHOOK_ID = '68a91f5bf3e21b15f0b528a9';
+const WEBHOOK_ID = process.env.DEPOSIT_WEBHOOK_ID;
 
 /**
  * @route PUT /api/webhooks/addresses
@@ -40,7 +40,7 @@ router.put('/addresses', async (req: Request, res: Response) => {
         }
 
         // Update the webhook addresses using the static ID
-        const updatedWebhook = await webhookService.updateWebhookAddresses(WEBHOOK_ID, addresses, walletId);
+        const updatedWebhook = await webhookService.updateWebhookAddresses(WEBHOOK_ID!, addresses, walletId);
 
         res.json({
             success: true,
@@ -93,7 +93,7 @@ router.post('/addresses', async (req: Request, res: Response) => {
         }
 
         // Add the address to webhook by merging with existing addresses from database
-        const result = await webhookService.addAddressToWebhook(address, WEBHOOK_ID);
+        const result = await webhookService.addAddressToWebhook(address, WEBHOOK_ID!);
 
         res.json({
             success: true,
@@ -124,7 +124,7 @@ router.post('/addresses', async (req: Request, res: Response) => {
  */
 router.get('/addresses', async (req: Request, res: Response) => {
     try {
-        const addresses = await webhookService.getWebhookAddresses(WEBHOOK_ID);
+        const addresses = await webhookService.getWebhookAddresses(WEBHOOK_ID!);
 
         res.json({
             success: true,
