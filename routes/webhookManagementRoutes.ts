@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+
 import { WebhookManagementService } from '../services/webhookManagementService';
 import { logger } from '../lib/logger';
 
@@ -40,7 +41,7 @@ router.put('/addresses', async (req: Request, res: Response) => {
         }
 
         // Update the webhook addresses using the static ID
-        const updatedWebhook = await webhookService.updateWebhookAddresses(WEBHOOK_ID!, addresses, walletId);
+        await webhookService.updateWebhookAddresses(WEBHOOK_ID!, addresses, walletId);
 
         res.json({
             success: true,
