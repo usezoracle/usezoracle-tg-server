@@ -49,6 +49,19 @@ export class TokenDetailsService {
     try {
       const { network, address, include } = params;
       
+      // Validate and sanitize address parameter against SSRF
+      if (typeof address !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        logger.error({ address }, 'Invalid token address provided');
+        throw new Error('Invalid address parameter');
+      }
+
+      // Restrict the include parameter to an allowlist
+      const allowedIncludes = [undefined, 'top_pools'];
+      if (include !== undefined && !allowedIncludes.includes(include)) {
+        logger.error({ include }, 'Invalid include parameter provided');
+        throw new Error('Invalid include parameter');
+      }
+
       // Build the URL
       let url = `${this.baseUrl}/networks/${network}/tokens/${address}`;
       
