@@ -84,6 +84,22 @@ export class SwapService {
   }
 
   /**
+   * Calculate the fee amount (5% of the swap amount)
+   */
+  private calculateFee(amount: bigint): bigint {
+    // Calculate 5% fee: amount * 5 / 100
+    return (amount * BigInt(config.fee.percentage)) / BigInt(100);
+  }
+
+  /**
+   * Calculate the amount after deducting the fee
+   */
+  private calculateAmountAfterFee(amount: bigint): bigint {
+    const fee = this.calculateFee(amount);
+    return amount - fee;
+  }
+
+  /**
    * Get price estimate for a swap
    */
   async getSwapPrice(params: {
@@ -102,12 +118,16 @@ export class SwapService {
 
       // Convert amount to BigInt safely
       const fromAmount = this.safeBigIntConversion(params.fromAmount);
+      
+      // Calculate fee and amount after fee
+      const fee = this.calculateFee(fromAmount);
+      const amountAfterFee = this.calculateAmountAfterFee(fromAmount);
 
-      // Get swap price
+      // Get swap price using the amount after fee
       const swapPrice = await this.cdp!.evm.getSwapPrice({
         fromToken: params.fromToken as `0x${string}`,
         toToken: params.toToken as `0x${string}`,
-        fromAmount,
+        fromAmount: amountAfterFee,
         network: params.network,
         taker: account.address,
       });
@@ -134,6 +154,14 @@ export class SwapService {
             swapPrice.fromAmount,
             swapPrice.toAmount
           ),
+          fee: {
+            amount: fee.toString(),
+            amountFormatted: this.formatAmount(fee.toString()),
+            percentage: config.fee.percentage,
+            address: config.fee.address,
+          },
+          totalFromAmount: fromAmount.toString(),
+          totalFromAmountFormatted: this.formatAmount(fromAmount.toString()),
         },
         message: "Swap price estimated successfully",
       };
@@ -189,6 +217,16 @@ export class SwapService {
         fromAmount = this.safeBigIntConversion(params.fromAmount);
       }
 
+      // Calculate fee and amount after fee
+      const fee = this.calculateFee(fromAmount);
+      const amountAfterFee = this.calculateAmountAfterFee(fromAmount);
+      
+      logger.info({ 
+        totalAmount: fromAmount.toString(), 
+        fee: fee.toString(), 
+        amountAfterFee: amountAfterFee.toString() 
+      }, 'Fee calculation completed');
+
       // Check if fromToken is native ETH
       const isNativeAsset = params.fromToken.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
@@ -211,13 +249,28 @@ export class SwapService {
         }
       }
 
-      // Execute swap
+      // Send fee to fee address before executing swap
+      try {
+        logger.info({ fee: fee.toString(), feeAddress: config.fee.address }, 'Sending fee to fee address');
+        await this.sendFeeToAddress(
+          account.address as Address,
+          params.fromToken as Address,
+          fee,
+          params.network
+        );
+        logger.info('Fee sent successfully');
+      } catch (feeError) {
+        logger.error({ err: feeError }, 'Fee transfer failed');
+        throw new Error(`Fee transfer failed: ${(feeError as Error).message}. Please ensure the account has sufficient balance for the fee.`);
+      }
+
+      // Execute swap with amount after fee
       logger.info('Initiating swap transaction');
       const swapResult = await account.swap({
         network: params.network,
         fromToken: params.fromToken as `0x${string}`,
         toToken: params.toToken as `0x${string}`,
-        fromAmount,
+        fromAmount: amountAfterFee,
         slippageBps: params.slippageBps || 100, // Default 1% slippage tolerance
       });
 
@@ -265,7 +318,14 @@ export class SwapService {
       // Create response object with all BigInt values converted to strings
       const responseData = {
         transactionHash: swapResult.transactionHash,
-        fromAmount: fromAmount.toString(),
+        fromAmount: amountAfterFee.toString(),
+        totalFromAmount: fromAmount.toString(),
+        fee: {
+          amount: fee.toString(),
+          amountFormatted: this.formatAmount(fee.toString()),
+          percentage: config.fee.percentage,
+          address: config.fee.address,
+        },
         network: params.network,
         blockNumber: blockNumber,
         gasUsed: gasUsed,
@@ -744,6 +804,87 @@ export class SwapService {
     } catch (error) {
       logger.error({ err: error }, 'Token allowance check failed');
       throw new Error(`Failed to check token allowance: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Send fee to the fee address
+   */
+  private async sendFeeToAddress(
+    fromAddress: Address,
+    tokenAddress: Address,
+    feeAmount: bigint,
+    network: EvmSwapsNetwork
+  ): Promise<void> {
+    try {
+      this.initializeCdp();
+      if (!this.cdp) {
+        throw new Error("CDP client not initialized");
+      }
+
+      const isNativeAsset = tokenAddress.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+      if (isNativeAsset) {
+        // For ETH, send directly
+        logger.info({ feeAmount: feeAmount.toString(), feeAddress: config.fee.address }, 'Sending ETH fee');
+        
+        const txResult = await this.cdp.evm.sendTransaction({
+          address: fromAddress,
+          network: network,
+          transaction: {
+            to: config.fee.address as `0x${string}`,
+            value: feeAmount,
+          },
+        });
+
+        logger.info({ tx: txResult.transactionHash }, 'ETH fee transaction sent');
+
+        // Wait for transaction confirmation
+        const receipt = await this.publicClient.waitForTransactionReceipt({
+          hash: txResult.transactionHash,
+        });
+
+        if (receipt.status !== "success") {
+          throw new Error(`Fee transaction failed with status: ${receipt.status}`);
+        }
+
+        logger.info({ blockNumber: receipt.blockNumber }, 'ETH fee transaction confirmed');
+      } else {
+        // For tokens, use transfer function
+        logger.info({ feeAmount: feeAmount.toString(), feeAddress: config.fee.address }, 'Sending token fee');
+        
+        const data = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: "transfer",
+          args: [config.fee.address as `0x${string}`, feeAmount],
+        });
+
+        const txResult = await this.cdp.evm.sendTransaction({
+          address: fromAddress,
+          network: network,
+          transaction: {
+            to: tokenAddress,
+            data,
+            value: BigInt(0),
+          },
+        });
+
+        logger.info({ tx: txResult.transactionHash }, 'Token fee transaction sent');
+
+        // Wait for transaction confirmation
+        const receipt = await this.publicClient.waitForTransactionReceipt({
+          hash: txResult.transactionHash,
+        });
+
+        if (receipt.status !== "success") {
+          throw new Error(`Fee transaction failed with status: ${receipt.status}`);
+        }
+
+        logger.info({ blockNumber: receipt.blockNumber }, 'Token fee transaction confirmed');
+      }
+    } catch (error) {
+      logger.error({ err: error }, 'Fee transfer failed');
+      throw new Error(`Failed to send fee: ${(error as Error).message}`);
     }
   }
 

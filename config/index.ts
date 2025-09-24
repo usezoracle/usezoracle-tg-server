@@ -28,4 +28,8 @@ export const config = {
     walletSecret: required('CDP_WALLET_SECRET'),
     webhookId: process.env.CDP_WEBHOOK_ID ?? '',
   },
+  fee: {
+    address: required('FEE_ADDRESS'),
+    percentage: 5, // 5% fee
+  },
 };

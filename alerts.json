@@ -751,6 +751,326 @@
       "amount": "20000000000000",
       "isActive": true,
       "createdAt": 1755260433
+    },
+    "trade-test-account-failed_transaction-1758724017052": {
+      "id": "trade-test-account-failed_transaction-1758724017052",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724018
+    },
+    "trade-test-account-failed_transaction-1758724018166": {
+      "id": "trade-test-account-failed_transaction-1758724018166",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724018
+    },
+    "trade-test-account-failed_transaction-1758724018367": {
+      "id": "trade-test-account-failed_transaction-1758724018367",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724018
+    },
+    "trade-test-account-failed_transaction-1758724018576": {
+      "id": "trade-test-account-failed_transaction-1758724018576",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724018
+    },
+    "trade-test-account-successful_trade-1758724046838": {
+      "id": "trade-test-account-successful_trade-1758724046838",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724047
+    },
+    "trade-test-account-successful_trade-1758724047573": {
+      "id": "trade-test-account-successful_trade-1758724047573",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724047
+    },
+    "trade-test-account-failed_transaction-1758724047805": {
+      "id": "trade-test-account-failed_transaction-1758724047805",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724047
+    },
+    "trade-test-account-failed_transaction-1758724047960": {
+      "id": "trade-test-account-failed_transaction-1758724047960",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724048
+    },
+    "trade-test-account-successful_trade-1758724075531": {
+      "id": "trade-test-account-successful_trade-1758724075531",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724076
+    },
+    "trade-test-account-successful_trade-1758724076537": {
+      "id": "trade-test-account-successful_trade-1758724076537",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724076
+    },
+    "trade-test-account-failed_transaction-1758724076759": {
+      "id": "trade-test-account-failed_transaction-1758724076759",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724076
+    },
+    "trade-test-account-failed_transaction-1758724076919": {
+      "id": "trade-test-account-failed_transaction-1758724076919",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724077
+    },
+    "trade-test-account-successful_trade-1758724085164": {
+      "id": "trade-test-account-successful_trade-1758724085164",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724086
+    },
+    "trade-test-account-successful_trade-1758724086055": {
+      "id": "trade-test-account-successful_trade-1758724086055",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724086
+    },
+    "trade-test-account-failed_transaction-1758724086235": {
+      "id": "trade-test-account-failed_transaction-1758724086235",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724086
+    },
+    "trade-test-account-failed_transaction-1758724086414": {
+      "id": "trade-test-account-failed_transaction-1758724086414",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758724086
+    },
+    "trade-test-account-successful_trade-1758725857958": {
+      "id": "trade-test-account-successful_trade-1758725857958",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725858
+    },
+    "trade-test-account-successful_trade-1758725858927": {
+      "id": "trade-test-account-successful_trade-1758725858927",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725859
+    },
+    "trade-test-account-failed_transaction-1758725859101": {
+      "id": "trade-test-account-failed_transaction-1758725859101",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725859
+    },
+    "trade-test-account-failed_transaction-1758725859265": {
+      "id": "trade-test-account-failed_transaction-1758725859265",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725859
+    },
+    "trade-test-account-successful_trade-1758725898368": {
+      "id": "trade-test-account-successful_trade-1758725898368",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725899
+    },
+    "trade-test-account-successful_trade-1758725899330": {
+      "id": "trade-test-account-successful_trade-1758725899330",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725899
+    },
+    "trade-test-account-failed_transaction-1758725899518": {
+      "id": "trade-test-account-failed_transaction-1758725899518",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725899
+    },
+    "trade-test-account-failed_transaction-1758725899682": {
+      "id": "trade-test-account-failed_transaction-1758725899682",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725899
+    },
+    "trade-test-account-successful_trade-1758725911748": {
+      "id": "trade-test-account-successful_trade-1758725911748",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725912
+    },
+    "trade-test-account-successful_trade-1758725912617": {
+      "id": "trade-test-account-successful_trade-1758725912617",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725912
+    },
+    "trade-test-account-failed_transaction-1758725912820": {
+      "id": "trade-test-account-failed_transaction-1758725912820",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725913
+    },
+    "trade-test-account-failed_transaction-1758725913012": {
+      "id": "trade-test-account-failed_transaction-1758725913012",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725913
+    },
+    "trade-test-account-successful_trade-1758725924486": {
+      "id": "trade-test-account-successful_trade-1758725924486",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725925
+    },
+    "trade-test-account-successful_trade-1758725925452": {
+      "id": "trade-test-account-successful_trade-1758725925452",
+      "accountName": "test-account",
+      "alertType": "successful_trade",
+      "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725925
+    },
+    "trade-test-account-failed_transaction-1758725925685": {
+      "id": "trade-test-account-failed_transaction-1758725925685",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725925
+    },
+    "trade-test-account-failed_transaction-1758725925915": {
+      "id": "trade-test-account-failed_transaction-1758725925915",
+      "accountName": "test-account",
+      "alertType": "failed_transaction",
+      "tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "tokenSymbol": "Unknown",
+      "amount": "1000000000000000000",
+      "isActive": true,
+      "createdAt": 1758725926
     }
   },
   "marketAlerts": {},
